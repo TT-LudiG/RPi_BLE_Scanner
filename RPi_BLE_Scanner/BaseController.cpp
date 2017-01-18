@@ -2,12 +2,24 @@
 #include <iostream>
 #include <thread>
 
-#include "BaseController.h"
+#include "BaseController_RPi.h"
+#include "Packet_Sensor_RPi.h"
 
 const std::string BaseController::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 BaseController::BaseController(void)
 {
+    _networkController = new NetworkController();
+    
+    _bluetoothControllerPtr = new BluetoothController();
+    
+    _isDone = false;
+}
+
+BaseController::BaseController(unsigned int port, std::string serverName)
+{
+    _networkController = new NetworkController(port, serverName);
+    
     _bluetoothControllerPtr = new BluetoothController();
     
     _isDone = false;
@@ -107,18 +119,28 @@ void BaseController::listenforBLEDevices(void)
                 
                 std::string payload = base64Decode(payloadData, 12);
                 
-                std::string temperature = "NULL";
-                std::string humidity = "NULL";
-                std::string battery = "NULL";
-                
-                if (payload.size() == 9)
-                {                
-                    temperature = payload.substr(0, 4);
-                    humidity = payload.substr(4, 3);
-                    battery = payload.substr(7, 2);
+                if (manufacturer == "INO")
+                {
+                    std::string temperatureStr = "NULL";
+                    std::string humidityStr = "NULL";
+                    std::string batteryStr = "NULL";
+                    
+                    if (payload.size() == 9)
+                    {                
+                        temperatureStr = payload.substr(0, 4);
+                        humidityStr = payload.substr(4, 3);
+                        batteryStr = payload.substr(7, 2);
+                        
+                        Packet_Sensor packet;
+                        
+                        packet.Temperature = getTemperatureBits(temperatureStr);
+                        packet.Humidity = getHumidityBits(humidityStr);
+                        
+                        _networkController->sendPacket(packet);
+                    }
+                    
+                    std::cout << address << " | RSSI: " << rssi << " | Manufacturer: "  << manufacturer << " | Temperature: " << temperatureStr << " | Humidity: " << humidityStr << " | Battery: " << batteryStr << std::endl;
                 }
-                
-                std::cout << address << " | RSSI: " << rssi << " | Manufacturer: "  << manufacturer << " | Temperature: " << temperature << " | Humidity: " << humidity << " | Battery: " << battery << std::endl;
         
                 offsetPtr = infoPtr->data + (infoPtr->length + 2);
             }
@@ -136,6 +158,33 @@ void BaseController::listenforBLEDevices(void)
 void BaseController::finalise(void)
 {
     _isDone = true;
+}
+
+std::bitset<10> BaseController::getTemperatureBits(std::string temperatureStr)
+{
+    std::bitset<10> temperatureBits(std::stoi(temperatureStr.substr(1, 3)));
+    
+    if (temperatureStr[0] == '+')
+        temperatureBits[9] = 0b1;
+    
+    else
+        temperatureBits[9] = 0b0;
+    
+    return temperatureBits;
+}
+
+std::bitset<9> BaseController::getHumidityBits(std::string ambienteStr)
+{
+    std::bitset<9> ambientBits(std::stoi(ambienteStr));
+    
+    return ambientBits;
+}
+
+std::bitset<7> BaseController::getBatteryBits(std::string batteryStr)
+{
+    std::bitset<7> batteryBits(std::stoi(batteryStr));
+    
+    return batteryBits;
 }
 
 // The "isBase64" and "base64Decode" functions were based off of 3rd-party source code, distributed under the following license:

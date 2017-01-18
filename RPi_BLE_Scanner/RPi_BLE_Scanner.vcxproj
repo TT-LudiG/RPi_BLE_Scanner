@@ -70,6 +70,7 @@
   <ItemGroup>
     <ClCompile Include="BaseController.cpp" />
     <ClCompile Include="BluetoothController.cpp" />
+    <ClCompile Include="NetworkController_RPi.cpp" />
     <ClCompile Include="RPi_BLE_Scanner.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -80,9 +81,15 @@
     <None Include="RPi_BLE_Scanner-Release.vgdbsettings" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BaseController.h" />
+    <ClInclude Include="BaseController_RPi.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
+    <ClInclude Include="Packet_Connect_RPi.h" />
+    <ClInclude Include="NetworkController_RPi.h" />
+    <ClInclude Include="NetworkExceptions_RPi.h" />
+    <ClInclude Include="PacketType_RPi.h" />
+    <ClInclude Include="Packet_RPi.h" />
+    <ClInclude Include="Packet_Sensor_RPi.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
