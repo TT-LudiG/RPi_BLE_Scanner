@@ -3,13 +3,11 @@
 
 #include <cstring>
 
-#include "PacketType_RPi.h"
-
 #define MAX_PACKET_SIZE 1000000
 
 struct Packet
 {
-    const PacketType type = PacketType::PACKET_NULL;
+    const unsigned char PacketType = 0;  
     
     void serialise(char* data) const
     {

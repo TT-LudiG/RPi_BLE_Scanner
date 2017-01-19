@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -9,7 +10,7 @@ const std::string BaseController::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcd
 
 BaseController::BaseController(void)
 {
-    _networkController = new NetworkController();
+//    _networkControllerPtr = new NetworkController();
     
     _bluetoothControllerPtr = new BluetoothController();
     
@@ -18,7 +19,7 @@ BaseController::BaseController(void)
 
 BaseController::BaseController(unsigned int port, std::string serverName)
 {
-    _networkController = new NetworkController(port, serverName);
+    _networkControllerPtr = new NetworkController(port, serverName);
     
     _bluetoothControllerPtr = new BluetoothController();
     
@@ -27,6 +28,8 @@ BaseController::BaseController(unsigned int port, std::string serverName)
 
 BaseController::~BaseController(void)
 {
+    delete _networkControllerPtr;
+    
     _bluetoothControllerPtr->stopHCIScan_BLE();
     
     _bluetoothControllerPtr->closeHCIDevice();
@@ -34,13 +37,48 @@ BaseController::~BaseController(void)
     delete _bluetoothControllerPtr;
 }
 
+void BaseController::sendDataPeriodically(void)
+{
+    while (!_isDone)
+    {
+        for (std::map<std::string, BeaconState>::const_iterator it = _beacons.begin(); it != _beacons.end(); ++it)
+        {
+            Packet_Sensor packet;
+            
+            memcpy(packet.ID, it->first.c_str(), 6);
+            
+            packet.Temperature = it->second.Temperature;
+            packet.Humidity = it->second.Humidity;
+            packet.Battery = it->second.Battery;
+            
+            time_t timeRaw;
+            
+            time(&timeRaw);
+            
+            packet.Timestamp = timeRaw;
+            
+            struct tm * timeInfo = localtime(&packet.Timestamp);
+            
+            char timeBuffer[80];
+            
+            strftime(timeBuffer, 80, "%F %T", timeInfo);
+            
+            std::cout << it->first << "|" << packet.Temperature << "|" << packet.Humidity << "|" << int(packet.Battery) << "|" << timeBuffer << std::endl;
+            
+//            _networkControllerPtr->sendPacket(packet);
+        }
+        
+        std::cout << "***" << std::endl;
+        
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+}
+
 void BaseController::listenforBLEDevices(void)
 {	
     _bluetoothControllerPtr->startHCIScan_BLE();
     
     std::cout << "Scanning..." << std::endl;
-	
-    std::string inputLine;
     
     bool isError = false;
 	
@@ -92,14 +130,6 @@ void BaseController::listenforBLEDevices(void)
                 {
                     continue;
                 }
-            
-                char addressBuffer[18];
-        
-                ba2str(&(infoPtr->bdaddr), addressBuffer);
-                
-                std::string address = addressBuffer;
-                
-                int rssi = int(infoPtr->data[dataLength]);
                 
                 // Manufacturer data is found from indices 2-4 (length: 3).
                 
@@ -111,35 +141,48 @@ void BaseController::listenforBLEDevices(void)
                 
                 std::string manufacturer = (char*)(manufacturerData);
                 
-                // Temperature data is found from indices 10-22 (length: 13).
-                
-                unsigned char payloadData[12];
-                
-                memcpy(payloadData, (infoPtr->data + 11), 12);
-                
-                std::string payload = base64Decode(payloadData, 12);
-                
                 if (manufacturer == "INO")
                 {
-                    std::string temperatureStr = "NULL";
-                    std::string humidityStr = "NULL";
-                    std::string batteryStr = "NULL";
+                    // Temperature data is found from indices 10-22 (length: 13).
+                
+                    unsigned char payloadData[12];
+                
+                    memcpy(payloadData, (infoPtr->data + 11), 12);
+                
+                    std::string payload = base64Decode(payloadData, 12);
                     
                     if (payload.size() == 9)
-                    {                
-                        temperatureStr = payload.substr(0, 4);
-                        humidityStr = payload.substr(4, 3);
-                        batteryStr = payload.substr(7, 2);
+                    {
+                        char idBuffer[6];
                         
-                        Packet_Sensor packet;
+                        ba2str(&infoPtr->bdaddr, idBuffer);
                         
-                        packet.Temperature = getTemperatureBits(temperatureStr);
-                        packet.Humidity = getHumidityBits(humidityStr);
+                        std::string id = idBuffer;
                         
-                        _networkController->sendPacket(packet);
+                        id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
+                        
+                        short temperature = getTemperature(payload.substr(0, 4));
+                        unsigned short humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
+                        unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
+                        
+                        if (_beacons.count(id) == 0)
+                        {
+                            BeaconState newBeacon;
+                            
+                            newBeacon.Temperature = temperature;
+                            newBeacon.Humidity = humidity;
+                            newBeacon.Battery = battery;
+                            
+                            _beacons.emplace(id, newBeacon);
+                        }
+                        
+                        else
+                        {
+                            _beacons[id].Temperature = temperature;
+                            _beacons[id].Humidity = humidity;
+                            _beacons[id].Battery = battery;
+                        }
                     }
-                    
-                    std::cout << address << " | RSSI: " << rssi << " | Manufacturer: "  << manufacturer << " | Temperature: " << temperatureStr << " | Humidity: " << humidityStr << " | Battery: " << batteryStr << std::endl;
                 }
         
                 offsetPtr = infoPtr->data + (infoPtr->length + 2);
@@ -160,31 +203,14 @@ void BaseController::finalise(void)
     _isDone = true;
 }
 
-std::bitset<10> BaseController::getTemperatureBits(std::string temperatureStr)
+short BaseController::getTemperature(std::string temperatureStr)
 {
-    std::bitset<10> temperatureBits(std::stoi(temperatureStr.substr(1, 3)));
+    short temperature = (std::stoi(temperatureStr.substr(1, 3)) & 0xFFFF);
     
-    if (temperatureStr[0] == '+')
-        temperatureBits[9] = 0b1;
+    if (temperatureStr[0] == '-')
+        temperature *= -1;
     
-    else
-        temperatureBits[9] = 0b0;
-    
-    return temperatureBits;
-}
-
-std::bitset<9> BaseController::getHumidityBits(std::string ambienteStr)
-{
-    std::bitset<9> ambientBits(std::stoi(ambienteStr));
-    
-    return ambientBits;
-}
-
-std::bitset<7> BaseController::getBatteryBits(std::string batteryStr)
-{
-    std::bitset<7> batteryBits(std::stoi(batteryStr));
-    
-    return batteryBits;
+    return temperature;
 }
 
 // The "isBase64" and "base64Decode" functions were based off of 3rd-party source code, distributed under the following license:

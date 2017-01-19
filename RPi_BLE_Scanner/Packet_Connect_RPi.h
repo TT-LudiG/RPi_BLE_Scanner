@@ -5,7 +5,7 @@
 
 struct Packet_Connect: Packet
 {
-    const PacketType type = PacketType::PACKET_CONNECT;
+    const unsigned char PacketType = 1;
 };
 
 #endif

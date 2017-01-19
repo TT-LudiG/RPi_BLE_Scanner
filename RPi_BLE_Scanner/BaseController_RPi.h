@@ -2,26 +2,26 @@
 #define BASECONTROLLER_RPI_H
 
 #include <atomic>
-#include <bitset>
-#include <string>
+#include <map>
 
+#include "BeaconState.h"
 #include "BluetoothController.h"
 #include "NetworkController_RPi.h"
 
 class BaseController
 {
 private:
-    NetworkController* _networkController;
+    NetworkController* _networkControllerPtr = nullptr;
     
-    BluetoothController* _bluetoothControllerPtr;
+    BluetoothController* _bluetoothControllerPtr = nullptr;
     
     std::atomic<bool> _isDone;
     
+    std::map<std::string, BeaconState> _beacons;
+    
     static const std::string _base64Chars;
     
-    static std::bitset<10> getTemperatureBits(std::string temperatureStr);    
-    static std::bitset<9> getHumidityBits(std::string ambientStr);
-    static std::bitset<7> getBatteryBits(std::string batteryStr);
+    static short getTemperature(std::string temperatureStr);
     
     static bool isBase64(unsigned char inputChar);
     
@@ -31,6 +31,8 @@ public:
     BaseController(void);
     BaseController(unsigned int port, std::string serverName);
     ~BaseController(void);
+    
+    void sendDataPeriodically(void);
     
     void listenforBLEDevices(void);
     

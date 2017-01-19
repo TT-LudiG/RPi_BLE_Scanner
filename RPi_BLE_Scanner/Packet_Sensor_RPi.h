@@ -1,20 +1,21 @@
 #ifndef PACKET_SENSOR_RPI_H
 #define PACKET_SENSOR_RPI_H
 
-#include <bitset>
-#include <string>
+#include <ctime>
 
 #include "Packet_RPi.h"
 
 struct Packet_Sensor: Packet
 {
-    const PacketType type = PacketType::PACKET_SENSOR;
+    const unsigned char PacketType = 2;
     
+    unsigned char ID[6];
     
+    short Temperature;    
+    unsigned short Humidity;
+    unsigned char Battery;
     
-    std::bitset<10> Temperature;    
-    std::bitset<9> Humidity;    
-    std::bitset<7> Battery;
+    time_t Timestamp;
 };
 
 #endif

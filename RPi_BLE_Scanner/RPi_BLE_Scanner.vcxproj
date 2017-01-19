@@ -68,7 +68,7 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BaseController.cpp" />
+    <ClCompile Include="BaseController_RPi.cpp" />
     <ClCompile Include="BluetoothController.cpp" />
     <ClCompile Include="NetworkController_RPi.cpp" />
     <ClCompile Include="RPi_BLE_Scanner.cpp" />
@@ -82,12 +82,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseController_RPi.h" />
+    <ClInclude Include="BeaconState.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
     <ClInclude Include="Packet_Connect_RPi.h" />
     <ClInclude Include="NetworkController_RPi.h" />
     <ClInclude Include="NetworkExceptions_RPi.h" />
-    <ClInclude Include="PacketType_RPi.h" />
     <ClInclude Include="Packet_RPi.h" />
     <ClInclude Include="Packet_Sensor_RPi.h" />
   </ItemGroup>

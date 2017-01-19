@@ -35,7 +35,7 @@ error:
 	$(error Invalid configuration, please check your inputs)
 endif
 
-SOURCEFILES := BaseController.cpp BluetoothController.cpp RPi_BLE_Scanner.cpp
+SOURCEFILES := BaseController_RPi.cpp BluetoothController.cpp NetworkController_RPi.cpp RPi_BLE_Scanner.cpp
 EXTERNAL_LIBS := 
 EXTERNAL_LIBS_COPIED := $(foreach lib, $(EXTERNAL_LIBS),$(BINARYDIR)/$(notdir $(lib)))
 

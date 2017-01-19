@@ -1,5 +1,4 @@
 #include <cerrno>
-#include <cstring>
 
 #include <netdb.h>
 #include <unistd.h>
@@ -11,8 +10,10 @@
 #include "Packet_Connect_RPi.h"
 #include "Packet_RPi.h"
 
+#include <iostream>
+
 NetworkController::NetworkController(unsigned int port, std::string serverName): _packetSize(sizeof(Packet)), _serverName(serverName), _port(port)
-{
+{   
 	// Create the socket.
 	
     _socket = socket(PF_INET, SOCK_STREAM, 0);
@@ -28,7 +29,7 @@ NetworkController::NetworkController(unsigned int port, std::string serverName):
     initialiseSocketAddress(&_addressServer, _serverName.c_str(), _port);
 	
     if (connect(_socket, (struct sockaddr*)&_addressServer, sizeof(_addressServer)) < 0)
-    {
+    {      
         ServerConnectException e(std::string(std::strerror(errno)));
         throw e;
     }
