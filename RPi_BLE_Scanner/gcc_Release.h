@@ -197,6 +197,9 @@
 #ifndef __DEC32_EPSILON__
 #define __DEC32_EPSILON__ 1E-6DF
 #endif
+#ifndef __OPTIMIZE__
+#define __OPTIMIZE__ 1
+#endif
 #ifndef __CHAR_UNSIGNED__
 #define __CHAR_UNSIGNED__ 1
 #endif
@@ -244,6 +247,9 @@
 #endif
 #ifndef __SIZEOF_POINTER__
 #define __SIZEOF_POINTER__ 4
+#endif
+#ifndef NDEBUG
+#define NDEBUG 1
 #endif
 #ifndef __GCC_ATOMIC_CHAR16_T_LOCK_FREE
 #define __GCC_ATOMIC_CHAR16_T_LOCK_FREE 1
@@ -328,6 +334,9 @@
 #endif
 #ifndef __gnu_linux__
 #define __gnu_linux__ 1
+#endif
+#ifndef RELEASE
+#define RELEASE 1
 #endif
 #ifndef __ARM_PCS_VFP
 #define __ARM_PCS_VFP 1
@@ -549,9 +558,6 @@
 #endif
 #ifndef __UHA_FBIT__
 #define __UHA_FBIT__ 8
-#endif
-#ifndef __NO_INLINE__
-#define __NO_INLINE__ 1
 #endif
 #ifndef __SFRACT_MIN__
 #define __SFRACT_MIN__ (-0.5HR-0.5HR)
@@ -1117,16 +1123,10 @@
 #ifndef __ATOMIC_RELEASE
 #define __ATOMIC_RELEASE 3
 #endif
-#ifndef NDEBUG
-#define NDEBUG 1
-#endif
-#ifndef RELEASE
-#define RELEASE 1
-#endif
 #endif
 
 // --- Include directories begin --- //
-//C:/PROGRA~2/Gambit-C/v4.7.4/include
+//C:/Gambit/v4.8.6/include
 //c:\sysgcc\raspberry\bin\../lib/gcc/arm-linux-gnueabihf/4.9/../../../../arm-linux-gnueabihf/include/c++/4.9
 //c:\sysgcc\raspberry\bin\../lib/gcc/arm-linux-gnueabihf/4.9/../../../../arm-linux-gnueabihf/include/c++/4.9/backward
 //c:\sysgcc\raspberry\bin\../lib/gcc/arm-linux-gnueabihf/4.9/include

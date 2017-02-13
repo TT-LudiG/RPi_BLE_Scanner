@@ -5,10 +5,10 @@
 
 #include "Packet_RPi.h"
 
-struct Packet_Sensor: Packet
-{
-    const unsigned char PacketType = 2;
-    
+#define PACKET_TYPE_SENSOR 2
+
+struct Packet_Sensor_RPi: Packet_RPi
+{    
     unsigned char ID[6];
     
     short Temperature;    
@@ -16,6 +16,8 @@ struct Packet_Sensor: Packet
     unsigned char Battery;
     
     time_t Timestamp;
+    
+    Packet_Sensor_RPi(unsigned char packetType = PACKET_TYPE_SENSOR): Packet_RPi(packetType){}
 };
 
 #endif

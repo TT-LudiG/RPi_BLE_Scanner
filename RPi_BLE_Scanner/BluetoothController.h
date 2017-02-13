@@ -14,6 +14,7 @@ private:
 	
 public:   
     BluetoothController(void);
+    
     ~BluetoothController(void);
 
     void openHCIDevice_Default(void);

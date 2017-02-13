@@ -1,5 +1,5 @@
-#ifndef NETWORKEXCEPTIONS_H
-#define NETWORKEXCEPTIONS_H
+#ifndef NETWORKEXCEPTIONS_RPI_H
+#define NETWORKEXCEPTIONS_RPI_H
 
 #include <exception>
 #include <string>

@@ -8,10 +8,10 @@
 #include "BluetoothController.h"
 #include "NetworkController_RPi.h"
 
-class BaseController
+class BaseController_RPi
 {
 private:
-    NetworkController* _networkControllerPtr = nullptr;
+    NetworkController_RPi* _networkControllerPtr = nullptr;
     
     BluetoothController* _bluetoothControllerPtr = nullptr;
     
@@ -28,9 +28,10 @@ private:
     static std::string base64Decode(unsigned char* inputBuffer, int inputLength);
     
 public:
-    BaseController(void);
-    BaseController(unsigned int port, std::string serverName);
-    ~BaseController(void);
+    BaseController_RPi(void);
+    BaseController_RPi(std::string serverName, unsigned int port);
+    
+    ~BaseController_RPi(void);
     
     void sendDataPeriodically(void);
     

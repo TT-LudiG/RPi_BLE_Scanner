@@ -10,25 +10,24 @@
 #define SERVERNAME "192.168.2.113"
 #define PORT 2226
 
-class NetworkController
+class NetworkController_RPi
 {
 private:
     std::string _serverName;
-    unsigned int _port;
+    unsigned short _port;
 	
     int _socket;
 	
     struct sockaddr_in _addressServer;
 	
-    const unsigned int _packetSize;
-	
-    static void initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, uint16_t port);
+    static void initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, unsigned short port);
 	
 public:
-    NetworkController(unsigned int port = PORT, std::string serverName = SERVERNAME);
-    ~NetworkController(void);
+    NetworkController_RPi(const std::string& serverName = SERVERNAME, unsigned short port = PORT);
+    
+    ~NetworkController_RPi(void);
 	
-    void sendPacket(const Packet& packet);
+    void sendPacket(const Packet_RPi& packet);
 };
 
 #endif

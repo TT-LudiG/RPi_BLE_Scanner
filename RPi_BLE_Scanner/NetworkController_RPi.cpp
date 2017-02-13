@@ -10,9 +10,7 @@
 #include "Packet_Connect_RPi.h"
 #include "Packet_RPi.h"
 
-#include <iostream>
-
-NetworkController::NetworkController(unsigned int port, std::string serverName): _packetSize(sizeof(Packet)), _serverName(serverName), _port(port)
+NetworkController_RPi::NetworkController_RPi(const std::string& serverName, unsigned short port): _serverName(serverName), _port(port)
 {   
 	// Create the socket.
 	
@@ -34,17 +32,17 @@ NetworkController::NetworkController(unsigned int port, std::string serverName):
         throw e;
     }
     
-    Packet_Connect packet;
+    Packet_Connect_RPi packet;
 	
     sendPacket(packet);
 }
 
-NetworkController::~NetworkController(void)
+NetworkController_RPi::~NetworkController_RPi(void)
 {
     close(_socket);
 }
 
-void NetworkController::initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, uint16_t port)
+void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, unsigned short port)
 {
     struct hostent *hostInfo;
 
@@ -62,15 +60,25 @@ void NetworkController::initialiseSocketAddress(struct sockaddr_in* addressOutpu
     addressOutput->sin_addr = *(struct in_addr*)hostInfo->h_addr;
 }
 
-void NetworkController::sendPacket(const Packet& packet)
+void NetworkController_RPi::sendPacket(const Packet_RPi& packet)
 {	
-    char packetBuffer[_packetSize];
+    const unsigned int packetSize = sizeof(packet);
+    
+    char packetBuffer[packetSize + 1];
+    
+    // Set the first bit of the socket bit stream to the packet type.
+    
+    packetBuffer[0] = static_cast<char>(packet.PacketType);
+    
+    char packetBufferTemp[packetSize];
 	
-    packet.serialise(packetBuffer);
+    packet.serialise(packetBufferTemp);
+    
+    std::memcpy(packetBuffer + 1, packetBufferTemp, packetSize);
 	
     int bytesCount;
 
-    bytesCount = write(_socket, packetBuffer, _packetSize);
+    bytesCount = write(_socket, packetBuffer, packetSize);
 	
     if (bytesCount < 0)
     {

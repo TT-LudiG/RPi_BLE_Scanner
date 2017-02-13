@@ -6,27 +6,27 @@
 #include "BaseController_RPi.h"
 #include "Packet_Sensor_RPi.h"
 
-const std::string BaseController::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-BaseController::BaseController(void)
+BaseController_RPi::BaseController_RPi(void)
 {
-//    _networkControllerPtr = new NetworkController();
+    _networkControllerPtr = new NetworkController_RPi();
     
     _bluetoothControllerPtr = new BluetoothController();
     
     _isDone = false;
 }
 
-BaseController::BaseController(unsigned int port, std::string serverName)
+BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port)
 {
-    _networkControllerPtr = new NetworkController(port, serverName);
+    _networkControllerPtr = new NetworkController_RPi(serverName, port);
     
     _bluetoothControllerPtr = new BluetoothController();
     
     _isDone = false;
 }
 
-BaseController::~BaseController(void)
+BaseController_RPi::~BaseController_RPi(void)
 {
     delete _networkControllerPtr;
     
@@ -37,13 +37,13 @@ BaseController::~BaseController(void)
     delete _bluetoothControllerPtr;
 }
 
-void BaseController::sendDataPeriodically(void)
+void BaseController_RPi::sendDataPeriodically(void)
 {
     while (!_isDone)
     {
         for (std::map<std::string, BeaconState>::const_iterator it = _beacons.begin(); it != _beacons.end(); ++it)
         {
-            Packet_Sensor packet;
+            Packet_Sensor_RPi packet;
             
             memcpy(packet.ID, it->first.c_str(), 6);
             
@@ -65,7 +65,7 @@ void BaseController::sendDataPeriodically(void)
             
             std::cout << it->first << "|" << packet.Temperature << "|" << packet.Humidity << "|" << int(packet.Battery) << "|" << timeBuffer << std::endl;
             
-//            _networkControllerPtr->sendPacket(packet);
+            _networkControllerPtr->sendPacket(packet);
         }
         
         std::cout << "***" << std::endl;
@@ -74,7 +74,7 @@ void BaseController::sendDataPeriodically(void)
     }
 }
 
-void BaseController::listenforBLEDevices(void)
+void BaseController_RPi::listenforBLEDevices(void)
 {	
     _bluetoothControllerPtr->startHCIScan_BLE();
     
@@ -161,6 +161,8 @@ void BaseController::listenforBLEDevices(void)
                         
                         id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                         
+                        int8_t rssi = infoPtr->data[infoPtr->length];
+                        
                         short temperature = getTemperature(payload.substr(0, 4));
                         unsigned short humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
                         unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
@@ -194,16 +196,16 @@ void BaseController::listenforBLEDevices(void)
 
     if (isError)
     {
-        std::cout << "Error scanning." << std::endl;
+        std::cerr << "Error scanning." << std::endl;
     }
 }
 
-void BaseController::finalise(void)
+void BaseController_RPi::finalise(void)
 {
     _isDone = true;
 }
 
-short BaseController::getTemperature(std::string temperatureStr)
+short BaseController_RPi::getTemperature(std::string temperatureStr)
 {
     short temperature = (std::stoi(temperatureStr.substr(1, 3)) & 0xFFFF);
     
@@ -242,12 +244,12 @@ short BaseController::getTemperature(std::string temperatureStr)
 
 */
 
-bool BaseController::isBase64(unsigned char inputChar)
+bool BaseController_RPi::isBase64(unsigned char inputChar)
 {
     return (isalnum(inputChar) || (inputChar == '+') || (inputChar == '/'));
 }
 
-std::string BaseController::base64Decode(unsigned char* inputBuffer, int inputLength)
+std::string BaseController_RPi::base64Decode(unsigned char* inputBuffer, int inputLength)
 {    
     std::string decodedString;
     
