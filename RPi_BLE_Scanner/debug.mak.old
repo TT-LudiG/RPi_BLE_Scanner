@@ -15,7 +15,7 @@ OBJCOPY := C:/SysGCC/raspberry/bin/arm-linux-gnueabihf-objcopy.exe
 PREPROCESSOR_MACROS := DEBUG=1
 INCLUDE_DIRS := C:\SysGCC\raspberry\arm-linux-gnueabihf\sysroot\usr\local\include
 LIBRARY_DIRS := 
-LIBRARY_NAMES := bluetooth
+LIBRARY_NAMES := bluetooth pthread
 ADDITIONAL_LINKER_INPUTS := 
 MACOS_FRAMEWORKS := 
 LINUX_PACKAGES := 

@@ -17,23 +17,23 @@ private:
     
     std::atomic<bool> _isDone;
     
-    std::map<std::string, BeaconState> _beacons;
+    std::map<std::string, BeaconState*> _beacons;
     
     static const std::string _base64Chars;
     
-    static short getTemperature(std::string temperatureStr);
+    static short getTemperature(const std::string& temperatureStr);
     
-    static bool isBase64(unsigned char inputChar);
+    static bool isBase64(const unsigned char inputChar);
     
-    static std::string base64Decode(unsigned char* inputBuffer, int inputLength);
+    static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
 public:
     BaseController_RPi(void);
-    BaseController_RPi(std::string serverName, unsigned int port);
+    BaseController_RPi(const std::string serverName, const unsigned int port);
     
     ~BaseController_RPi(void);
     
-    void sendDataPeriodically(void);
+    void sendDataPeriodically(void) const;
     
     void listenforBLEDevices(void);
     

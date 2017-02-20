@@ -16,7 +16,7 @@ int main()
         baseControllerPtr = new BaseController();
     }
 
-    catch (std::exception e)
+    catch (const std::exception& e)
     {
         std::cerr << e.what() << std::endl;
 
@@ -25,14 +25,20 @@ int main()
         return 1;
     }
 
-    while (true)
-    {
-        baseControllerPtr->update();
+    std::thread monitorThread = std::thread(&BaseController::monitorClients, baseControllerPtr);
 
-        // Sleep for one 1/10th of a second.
+    std::cout << "Enter 'q' (quit), 'e' (exit) or 'c' (close) to end the program..." << std::endl;
+    
+    std::string inputLine;
+    
+    std::getline(std::cin, inputLine);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    while ((inputLine != "q") && (inputLine != "e") && (inputLine != "c"))
+        std::getline(std::cin, inputLine);
+
+    baseControllerPtr->finalise();
+
+    monitorThread.join();
 
     delete baseControllerPtr;
 

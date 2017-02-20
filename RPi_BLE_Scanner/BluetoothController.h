@@ -10,7 +10,7 @@ class BluetoothController
 private:    
     int _hciDeviceHandle, _hciStatus;
     
-    struct hci_request getHCIRequest_BLE(unsigned short ocf, int clen, void* status, void* cparam);
+    static struct hci_request getHCIRequest_BLE(const unsigned short int ocf, const int clen, void* status, void* cparam);
 	
 public:   
     BluetoothController(void);
@@ -25,7 +25,7 @@ public:
 
     void closeHCIDevice(void);
     
-    int readDeviceInput(unsigned char* outputBuffer, unsigned short outputLength);
+    int readDeviceInput(unsigned char* outputBuffer, unsigned short int bufferLength) const;
 };
 
 #endif

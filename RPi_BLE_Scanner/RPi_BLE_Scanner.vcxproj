@@ -73,11 +73,8 @@
     <ClInclude Include="BeaconState.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
-    <ClInclude Include="Packet_Connect_RPi.h" />
     <ClInclude Include="NetworkController_RPi.h" />
     <ClInclude Include="NetworkExceptions_RPi.h" />
-    <ClInclude Include="Packet_RPi.h" />
-    <ClInclude Include="Packet_Sensor_RPi.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

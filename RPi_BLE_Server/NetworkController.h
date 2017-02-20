@@ -6,8 +6,6 @@
 
 #include <ws2tcpip.h>
 
-#include "Packet.h"
-
 #define PORT "2226"
 
 #define SOCKET_BUFFER_SIZE_MAX 1000000
@@ -28,7 +26,7 @@ private:
 public:
     // Default constructor (error-prone).
 
-    NetworkController(const std::string& port = PORT);
+    NetworkController(const std::string port = PORT);
 
     // Default destructor.
 
@@ -36,11 +34,11 @@ public:
 
     // Method to attempt to accept a new client connection.
 
-    bool acceptNewClient(unsigned int clientId);
+    bool acceptNewClient(const unsigned int clientId);
 
     // Method to attempt to receive incoming data from a client.
 
-    int receiveFromClient(unsigned int clientId, char* outputBuffer);
+    int receiveFromClient(const unsigned int clientId, unsigned char* outputBuffer);
 
     // Method to send outgoing data to a client (error-prone).
 

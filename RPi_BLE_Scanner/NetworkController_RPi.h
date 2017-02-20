@@ -5,29 +5,27 @@
 
 #include <netinet/in.h>
 
-#include "Packet_RPi.h"
-
-#define SERVERNAME "192.168.2.113"
+#define SERVERNAME "thermotrack.dyndns.org"
 #define PORT 2226
 
 class NetworkController_RPi
 {
 private:
-    std::string _serverName;
-    unsigned short _port;
+    const std::string _serverName;
+    const unsigned short int _port;
 	
     int _socket;
 	
     struct sockaddr_in _addressServer;
 	
-    static void initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, unsigned short port);
+    static void initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, const unsigned short int port);
 	
 public:
-    NetworkController_RPi(const std::string& serverName = SERVERNAME, unsigned short port = PORT);
+    NetworkController_RPi(const std::string serverName = SERVERNAME, const unsigned short int port = PORT);
     
     ~NetworkController_RPi(void);
 	
-    void sendPacket(const Packet_RPi& packet);
+    void sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const;
 };
 
 #endif

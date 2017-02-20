@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <cstring>
 
 #include <netdb.h>
 #include <unistd.h>
@@ -7,10 +8,8 @@
 
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
-#include "Packet_Connect_RPi.h"
-#include "Packet_RPi.h"
 
-NetworkController_RPi::NetworkController_RPi(const std::string& serverName, unsigned short port): _serverName(serverName), _port(port)
+NetworkController_RPi::NetworkController_RPi(const std::string serverName, const unsigned short int port): _serverName(serverName), _port(port)
 {   
 	// Create the socket.
 	
@@ -31,10 +30,6 @@ NetworkController_RPi::NetworkController_RPi(const std::string& serverName, unsi
         ServerConnectException e(std::string(std::strerror(errno)));
         throw e;
     }
-    
-    Packet_Connect_RPi packet;
-	
-    sendPacket(packet);
 }
 
 NetworkController_RPi::~NetworkController_RPi(void)
@@ -42,7 +37,7 @@ NetworkController_RPi::~NetworkController_RPi(void)
     close(_socket);
 }
 
-void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, unsigned short port)
+void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, const unsigned short int port)
 {
     struct hostent *hostInfo;
 
@@ -56,33 +51,21 @@ void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressO
         HostnameLookupException e((std::string(hostname)));
         throw e;
     }
+    
+    // REINTERPRET_CAST!
 	
-    addressOutput->sin_addr = *(struct in_addr*)hostInfo->h_addr;
+    addressOutput->sin_addr = *reinterpret_cast<struct in_addr*>(hostInfo->h_addr);
 }
 
-void NetworkController_RPi::sendPacket(const Packet_RPi& packet)
-{	
-    const unsigned int packetSize = sizeof(packet);
-    
-    char packetBuffer[packetSize + 1];
-    
-    // Set the first bit of the socket bit stream to the packet type.
-    
-    packetBuffer[0] = static_cast<char>(packet.PacketType);
-    
-    char packetBufferTemp[packetSize];
-	
-    packet.serialise(packetBufferTemp);
-    
-    std::memcpy(packetBuffer + 1, packetBufferTemp, packetSize);
-	
+void NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
+{
     int bytesCount;
 
-    bytesCount = write(_socket, packetBuffer, packetSize);
+    bytesCount = write(_socket, static_cast<void*>(inputBuffer), bufferLength);
 	
     if (bytesCount < 0)
     {
-        ServerWritexception e(std::string(std::strerror(errno)));
+        ServerWriteException e(std::string(std::strerror(errno)));
         throw e;
     }
 }

@@ -17,6 +17,8 @@ int main(void)
     {
         std::cerr << e.what() << std::endl;
         
+        delete baseControllerPtr;
+        
         return 1;
     }
     
@@ -31,9 +33,7 @@ int main(void)
     std::getline(std::cin, inputLine);
     
     while ((inputLine != "q") && (inputLine != "e") && (inputLine != "c"))
-    {
         std::getline(std::cin, inputLine);
-    }
     
     baseControllerPtr->finalise();
     

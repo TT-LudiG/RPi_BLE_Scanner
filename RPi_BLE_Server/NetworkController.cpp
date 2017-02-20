@@ -5,7 +5,7 @@
 
 // Default constructor (error-prone).
 
-NetworkController::NetworkController(const std::string& port): _port(port), _socketGateway(INVALID_SOCKET)
+NetworkController::NetworkController(const std::string port): _port(port), _socketGateway(INVALID_SOCKET)
 {
     // Address info for the server to listen to.
 
@@ -65,7 +65,7 @@ NetworkController::NetworkController(const std::string& port): _port(port), _soc
 
     // Set the mode of the socket to be nonblocking. (*IS THIS CORRECT FOR OUR SYSTEM!?)
 
-    unsigned long mode = 1;
+    unsigned long int mode = 1;
 
     result = ioctlsocket(_socketGateway, FIONBIO, &mode);
 
@@ -81,7 +81,7 @@ NetworkController::NetworkController(const std::string& port): _port(port), _soc
 
     // Set the gateway socket as a TCP socket.
 
-    result = bind(_socketGateway, addrinfoResult->ai_addr, (int)addrinfoResult->ai_addrlen);
+    result = bind(_socketGateway, addrinfoResult->ai_addr, static_cast<int>(addrinfoResult->ai_addrlen));
 
     if (result == SOCKET_ERROR)
     {
@@ -116,11 +116,17 @@ NetworkController::NetworkController(const std::string& port): _port(port), _soc
 
 // Default destructor.
 
-NetworkController::~NetworkController(void){}
+NetworkController::~NetworkController(void)
+{
+    std::unordered_map<unsigned int, SOCKET>::iterator it;
+
+    for (it = _clientSockets.begin(); it != _clientSockets.end(); ++it)
+        closesocket(it->second);
+}
 
 // Method to attempt to accept a new client connection.
 
-bool NetworkController::acceptNewClient(unsigned int clientId)
+bool NetworkController::acceptNewClient(const unsigned int clientId)
 {
     // If the client is waiting, accept the connection and save the socket.
 
@@ -146,18 +152,13 @@ bool NetworkController::acceptNewClient(unsigned int clientId)
 
 // Method to attempt to receive incoming data from a client.
 
-int NetworkController::receiveFromClient(unsigned int clientId, char* outputBuffer)
+int NetworkController::receiveFromClient(const unsigned int clientId, unsigned char* outputBuffer)
 {
     if (_clientSockets.find(clientId) != _clientSockets.end())
     {
         SOCKET currentSocket = _clientSockets[clientId];
 
-        int result = recv(currentSocket, outputBuffer, SOCKET_BUFFER_SIZE_MAX, 0);
-
-        if (result == 0)
-        {
-            closesocket(currentSocket);
-        }
+        int result = recv(currentSocket, reinterpret_cast<char*>(outputBuffer), SOCKET_BUFFER_SIZE_MAX, 0);
 
         return result;
     }
@@ -182,9 +183,7 @@ int NetworkController::receiveFromClient(unsigned int clientId, char* outputBuff
 //        int result = send(currentSocket, packetBuffer, packetSize, 0);
 //
 //        if (result == SOCKET_ERROR)
-//        {
 //            closesocket(currentSocket);
-//        }
 //
 //        else
 //            return true;

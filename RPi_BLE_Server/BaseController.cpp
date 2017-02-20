@@ -1,126 +1,177 @@
 #include "stdafx.h"
 
-#include <chrono>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #include "BaseController.h"
 
-#include "Packet_Connect.h"
-#include "Packet_Sensor.h"
+BaseController::BaseController(void): _networkControllerPtr(new NetworkController()) {}
 
-BaseController::BaseController(): _networkControllerPtr(new NetworkController()), _clientIdNext(0) {}
-
-BaseController::~BaseController()
+BaseController::~BaseController(void)
 {
-    std::unordered_map<unsigned int, Client*>::iterator iterator1;
+    std::unordered_map<unsigned int, Client*>::iterator it1;
 
-    for (iterator1 = _clients.begin(); iterator1 != _clients.end(); ++iterator1)
-    {
-        delete iterator1->second;
-    }
+    for (it1 = _clients.begin(); it1 != _clients.end(); ++it1)
+        delete it1->second;
 
-    std::unordered_map<unsigned int, std::thread*>::iterator iterator2;
+    std::unordered_map<unsigned int, std::thread*>::iterator it2;
 
-    for (iterator2 = _threads.begin(); iterator2 != _threads.end(); ++iterator2)
-    {
-        (*iterator2->second).join();
-
-        delete iterator2->second;
-    }
+    for (it2 = _threads.begin(); it2 != _threads.end(); ++it2)
+        delete it2->second;
 
     delete _networkControllerPtr;
 }
 
-bool BaseController::update(void)
+void BaseController::monitorClients(void)
 {
-    // Get new clients.
+    std::unique_lock<std::mutex> lock(_mutex);
 
-    if (_networkControllerPtr->acceptNewClient(_clientIdNext))
+    while (!_isDone)
     {
-        _clients.insert(std::pair<unsigned int, Client*>(_clientIdNext, new Client()));
+        // Get new clients.
 
-        _threads.insert(std::pair<unsigned int, std::thread*>(_clientIdNext, new std::thread(listenOnClient, _clientIdNext, _networkControllerPtr)));
+        if (_networkControllerPtr->acceptNewClient(_clientIdNext))
+        {
+            _clients.insert(std::pair<unsigned int, Client*>(_clientIdNext, new Client("NULL", "NULL")));
 
-        ++_clientIdNext;
+            _threads.insert(std::pair<unsigned int, std::thread*>(_clientIdNext, new std::thread(&BaseController::listenOnClient, this, _clientIdNext)));
 
-        return true;
+            ++_clientCount;
+
+            ++_clientIdNext;
+        }
+
+        if (_clientCount > 0)
+        {
+            // Reset the conditional wait barrier for all client-listener threads.
+
+            if ((_isReady) && (_hasWokenCount == _clientCount))
+            {
+                lock.lock();
+
+                _isReady = false;
+
+                _hasWokenCount = 0;
+            }
+
+            // Force all synchronised client-listener threads to wait.
+
+            if ((!_isReady) && (_isWaitingCount == _clientCount))
+            {
+                std::clock_t start = std::clock();
+
+                // All client-listener threads wait for 0.1 seconds (interruptible).
+
+                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 0.1)
+                    if (_isDone)
+                        break;
+
+                _isReady = true;
+
+                lock.unlock();
+
+                _cv.notify_all();
+
+                _isWaitingCount = 0;
+            }
+        }
     }
-
-    return false;
 }
 
-void BaseController::listenOnClient(unsigned int clientId, NetworkController* networkControllerPtr)
+void BaseController::listenOnClient(const unsigned int clientId)
 {
-    char packetBuffer[SOCKET_BUFFER_SIZE_MAX];
+    unsigned char buffer[SOCKET_BUFFER_SIZE_MAX];
 
-    while (true)
+    while (!_isDone)
     {
         // Get the data for this client.
 
-        int packetLength = networkControllerPtr->receiveFromClient(clientId, packetBuffer);
+        int bufferLength = _networkControllerPtr->receiveFromClient(clientId, buffer);
 
-        if (packetLength > 0)
+        if (bufferLength > 0)
         {
             int i = 0;
 
-            while (i < packetLength)
+            while (i < bufferLength)
             {
-                unsigned int packetLength = SOCKET_BUFFER_SIZE_MAX;
+                unsigned char messageLength;
 
-                unsigned char packetType = static_cast<unsigned char>(packetBuffer[i]);
+                unsigned char temperatureLength;
+                unsigned char humidityLength;
+                unsigned char batteryLength;
 
-                if (packetType == PACKET_TYPE_DEFAULT)
-                {
-                    packetLength = sizeof(Packet);
+                char id[6];
 
-                    Packet packet;
+                short int temperature;    
+                unsigned short int humidity;
+                unsigned char battery;
 
-                    packet.deserialise(&(packetBuffer[i + 1]));
+                char time[20];
 
-                    std::cout << static_cast<unsigned int>(packet.PacketType)
-                                << "\nPACKET_DEFAULT_RECEIVED"
-                                << std::endl;
-                }
+                unsigned int currentIndex = 0;
 
-                else if (packetType == PACKET_TYPE_CONNECT)
-                {
-                    packetLength = sizeof(Packet_Connect);
+                memcpy(static_cast<void*>(&messageLength), buffer + currentIndex, 1);
 
-                    Packet_Connect packet;
+                if (messageLength > bufferLength)
+                    break;
 
-                    packet.deserialise(&(packetBuffer[i + 1]));
+                currentIndex += 1;
+                memcpy(static_cast<void*>(id), buffer + currentIndex, 6);
 
-                    std::cout << static_cast<unsigned int>(packet.PacketType)
-                                << "\nPACKET_CONNECT_RECEIVED"
-                                << std::endl;
-                }
+                currentIndex += 6;
+                memcpy(static_cast<void*>(&temperatureLength), buffer + currentIndex, 1);
+                currentIndex += 1;
+                if (temperatureLength == sizeof(temperature))
+                    memcpy(static_cast<void*>(&temperature), buffer + currentIndex, temperatureLength);
 
-                else if (packetType == PACKET_TYPE_SENSOR)
-                {
-                    packetLength = sizeof(Packet_Sensor);
+                currentIndex += temperatureLength;
+                memcpy(static_cast<void*>(&humidityLength), buffer + currentIndex, 1);
+                currentIndex += 1;
+                if (humidityLength == sizeof(humidity))
+                    memcpy(static_cast<void*>(&humidity), buffer + currentIndex, humidityLength);
 
-                    Packet_Sensor packet;
+                currentIndex += humidityLength;
+                memcpy(static_cast<void*>(&batteryLength), buffer + currentIndex, 1);
+                currentIndex += 1;
+                if (batteryLength == sizeof(battery))
+                    memcpy(static_cast<void*>(&battery), buffer + currentIndex, batteryLength);
 
-                    packet.deserialise(&(packetBuffer[i + 1]));
+                currentIndex += batteryLength;
+                memcpy(static_cast<void*>(time), buffer + currentIndex, 20);
 
-                    std::cout << static_cast<unsigned int>(packet.PacketType)
-                                << "\nPACKET_SENSOR_RECEIVED"
-                                << std::endl;
-                }
+                std::stringstream idBuffer;
 
-                else
-                {
-                    std::cout << "PACKET_ERROR" << std::endl;
-                }
+                idBuffer << std::hex << std::uppercase;
 
-                i += packetLength + 1;
+                for (unsigned int i = 0; i < 6; ++i)
+                    idBuffer << std::setfill('0') << std::setw(2) << static_cast<int>(id[i]);
+
+                std::cout << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
+
+                i += messageLength;
             }
         }
 
-        // Sleep for one 1/10th of a second.
+        ++_isWaitingCount;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::unique_lock<std::mutex> lock(_mutex);
+
+        while (!_isReady)
+            _cv.wait(lock);
+
+        ++_hasWokenCount;
     }
+}
+
+void BaseController::finalise(void)
+{
+    _isDone = true;
+
+    std::unordered_map<unsigned int, std::thread*>::iterator it;
+
+    for (it = _threads.begin(); it != _threads.end(); ++it)
+        it->second->join();
 }
 
 //bool BaseController::sendActionPacket(unsigned int clientId)

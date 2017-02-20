@@ -9,11 +9,10 @@
 class SocketCreateException: public std::exception
 {
 private:
-    std::string _error;
+    const std::string _error;
 	
 public:
-    SocketCreateException(std::string error):
-        _error(error) {}
+    SocketCreateException(const std::string error): _error(error) {}
 	
     virtual const char* what() const throw()
     {
@@ -28,11 +27,10 @@ public:
 class HostnameLookupException: public std::exception
 {
 private:
-    std::string _hostname;
+    const std::string _hostname;
 	
 public:
-    HostnameLookupException(std::string hostname):
-        _hostname(hostname) {}
+    HostnameLookupException(const std::string hostname): _hostname(hostname) {}
 	
     virtual const char* what() const throw()
     {
@@ -47,11 +45,10 @@ public:
 class ServerConnectException: public std::exception
 {
 private:
-    std::string _error;
+    const std::string _error;
 	
 public:
-    ServerConnectException(std::string error):
-        _error(error) {}
+    ServerConnectException(const std::string error): _error(error) {}
 	
     virtual const char* what() const throw()
     {
@@ -66,11 +63,10 @@ public:
 class ServerWritexception: public std::exception
 {
 private:
-    std::string _error;
+    const std::string _error;
 	
 public:
-    ServerWritexception(std::string error):
-        _error(error) {}
+    ServerWritexception(const std::string error): _error(error) {}
 	
     virtual const char* what() const throw()
     {

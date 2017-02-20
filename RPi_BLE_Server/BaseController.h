@@ -1,6 +1,9 @@
 #ifndef BASECONTROLLER_H
 #define BASECONTROLLER_H
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "Client.h"
@@ -15,15 +18,28 @@ private:
 
     std::unordered_map<unsigned int, std::thread*> _threads;
 
-    unsigned int _clientIdNext;
+    unsigned int _clientCount = 0;
 
-    static void listenOnClient(unsigned int clientId, NetworkController* networkControllerPtr);
+    std::atomic<bool> _isDone = false;
+
+    std::mutex _mutex;
+    std::atomic<bool> _isReady = false;
+    std::atomic<unsigned int> _isWaitingCount = 0;
+    std::atomic<unsigned int> _hasWokenCount = 0;
+
+    std::condition_variable _cv;
+
+    unsigned int _clientIdNext = 0;
+
+    void listenOnClient(const unsigned int clientId);
 
 public:
     BaseController(void);
     ~BaseController(void);
 
-    bool update(void);
+    void monitorClients(void);
+
+    void finalise(void);
 
     //bool sendActionPacket(unsigned int clientId);
 };

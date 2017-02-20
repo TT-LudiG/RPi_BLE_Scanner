@@ -7,6 +7,8 @@ struct Client
 {
     std::string ClientNumber;
     std::string ClientLocation;
+
+    Client(std::string clientNumber, std::string clientLocation): ClientNumber(clientNumber), ClientLocation(clientLocation) {}
 };
 
 #endif
