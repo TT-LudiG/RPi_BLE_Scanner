@@ -26,6 +26,8 @@ int main(void)
     
     std::thread senderThread(&BaseController_RPi::sendDataPeriodically, baseControllerPtr);
     
+    std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
+    
     std::cout << "Enter 'q' (quit), 'e' (exit) or 'c' (close) to end the program..." << std::endl;
     
     std::string inputLine;
@@ -37,7 +39,8 @@ int main(void)
     
     baseControllerPtr->finalise();
     
-    listenerThread.join();
+    listenerThread.join();    
+    monitorThread.join();
     senderThread.join();
     
     delete baseControllerPtr;

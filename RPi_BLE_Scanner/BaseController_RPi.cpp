@@ -14,6 +14,12 @@ BaseController_RPi::BaseController_RPi(void)
     _bluetoothControllerPtr = new BluetoothController();
     
     _isDone = false;
+    
+    _isReady = false;
+    _isWaiting = false;
+    _hasWoken = false;
+    _beaconsCount = 0;
+    _loopsCount = 0;
 }
 
 BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port)
@@ -23,6 +29,12 @@ BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port
     _bluetoothControllerPtr = new BluetoothController();
     
     _isDone = false;
+    
+    _isReady = false;
+    _isWaiting = false;
+    _hasWoken = false;
+    _beaconsCount = 0;
+    _loopsCount = 0;
 }
 
 BaseController_RPi::~BaseController_RPi(void)
@@ -41,14 +53,73 @@ BaseController_RPi::~BaseController_RPi(void)
     delete _bluetoothControllerPtr;
 }
 
-void BaseController_RPi::sendDataPeriodically(void) const
+void BaseController_RPi::monitorSenderThread(void)
 {
+    std::unique_lock<std::mutex> lock(_mutex);
+
+    while (!_isDone)
+    {
+        // Reset the conditional wait barrier for all client-listener threads.
+
+        if ((_isReady) && (_hasWoken))
+        {
+            lock.lock();
+
+            _isReady = false;
+            
+            _hasWoken = false;
+        }
+
+        if ((!_isReady) && (_isWaiting))
+        {
+            std::clock_t start = std::clock();
+            
+            if (_loopsCount > 0)
+            {
+                // All client-listener threads wait for 1 seconds (interruptible).
+
+                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 1.0)
+                    if (_isDone)
+                        break;
+            }
+            
+            else
+            {
+                // All client-listener threads wait for 5 seconds (interruptible).
+
+                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 5.0)
+                    if (_isDone)
+                        break;
+            }
+
+            _isReady = true;
+
+            lock.unlock();
+
+            _cv.notify_all();
+
+            _isWaiting = false;
+        }
+    }
+    
+    _isReady = true;
+}
+
+void BaseController_RPi::sendDataPeriodically(void)
+{
+    std::unique_lock<std::mutex> lock(_mutex);
+    
+    lock.unlock();
+    
     while (!_isDone)
     {
         std::map<std::string, BeaconState*>::const_iterator it;
         
         for (it = _beacons.begin(); it != _beacons.end(); ++it)
         {
+            if (_isDone)
+                return;
+            
             char id[6];
             
             std::string idString = it->first;
@@ -105,10 +176,36 @@ void BaseController_RPi::sendDataPeriodically(void) const
             
             _networkControllerPtr->sendBuffer(buffer, bufferLength);
             
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            
+            ++_loopsCount;
+            
+            _isWaiting = true;
+            
+            lock.lock();
+
+            while (!_isReady)
+                _cv.wait(lock);
+            
+            _hasWoken = true;
+            
+            lock.unlock();
         }
         
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        
+        _loopsCount = 0;
+        
+        _isWaiting = true;
+            
+        lock.lock();
+
+        while (!_isReady)
+            _cv.wait(lock);
+            
+        _hasWoken = true;
+        
+        lock.unlock();
     }
 }
 
@@ -125,7 +222,7 @@ void BaseController_RPi::listenforBLEDevices(void)
         if ((_bluetoothControllerPtr->readDeviceInput(inputBuffer, HCI_MAX_EVENT_SIZE)) < 0)
         {
             if (errno == EAGAIN)
-                std::this_thread::sleep_for(std::chrono::microseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
             else
             {
@@ -148,7 +245,7 @@ void BaseController_RPi::listenforBLEDevices(void)
                 continue;
             
             uint8_t reportCount = metaPtr->data[0];
-        
+            
             void* offsetPtr = metaPtr->data + 1;
             
             while (reportCount--)
@@ -171,11 +268,11 @@ void BaseController_RPi::listenforBLEDevices(void)
                 if (manufacturer == "INO")
                 {
                     // Temperature data is found from indices 10-22 (length: 13).
-                
+                    
                     unsigned char payloadData[12];
-                
+                    
                     memcpy(payloadData, (infoPtr->data + 11), 12);
-                
+                    
                     std::string payload = base64Decode(payloadData, 12);
                     
                     if (payload.size() == 9)
@@ -194,8 +291,12 @@ void BaseController_RPi::listenforBLEDevices(void)
                         unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
                         unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
                         
-                        if (_beacons.count(id) == 0)                           
+                        if (_beacons.count(id) == 0)
+                        {
                             _beacons.emplace(id, new BeaconState(temperature, humidity, battery));
+                            
+                            ++_beaconsCount;
+                        }
                         
                         else
                         {

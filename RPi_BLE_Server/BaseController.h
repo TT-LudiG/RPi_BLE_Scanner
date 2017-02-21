@@ -18,18 +18,18 @@ private:
 
     std::unordered_map<unsigned int, std::thread*> _threads;
 
-    unsigned int _clientCount = 0;
+    unsigned int _clientCount;
 
-    std::atomic<bool> _isDone = false;
+    std::atomic<bool> _isDone;
 
     std::mutex _mutex;
-    std::atomic<bool> _isReady = false;
-    std::atomic<unsigned int> _isWaitingCount = 0;
-    std::atomic<unsigned int> _hasWokenCount = 0;
+    std::atomic<bool> _isReady;
+    std::atomic<unsigned int> _isWaitingCount;
+    std::atomic<unsigned int> _hasWokenCount;
 
     std::condition_variable _cv;
 
-    unsigned int _clientIdNext = 0;
+    unsigned int _clientIdNext;
 
     void listenOnClient(const unsigned int clientId);
 

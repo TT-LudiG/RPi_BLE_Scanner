@@ -6,7 +6,20 @@
 
 #include "BaseController.h"
 
-BaseController::BaseController(void): _networkControllerPtr(new NetworkController()) {}
+BaseController::BaseController(void)
+{
+    _networkControllerPtr = new NetworkController();
+
+    _clientCount = 0;
+
+    _isDone = false;
+
+    _isReady = false;    
+    _isWaitingCount = 0;
+    _hasWokenCount = 0;
+
+    _clientIdNext = 0;
+}
 
 BaseController::~BaseController(void)
 {
