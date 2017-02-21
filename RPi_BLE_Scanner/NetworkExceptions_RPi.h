@@ -1,10 +1,10 @@
-#ifndef BLUETOOTH_EXCEPTIONS_H
-#define BLUETOOTH_EXCEPTIONS_H
+#ifndef NETWORKEXCEPTIONS_RPI_H
+#define NETWORKEXCEPTIONS_RPI_H
 
 #include <exception>
 #include <string>
 
-// EXCEPTION_BLUE_RPI_0
+// EXCEPTION_NET_RPI_0
 
 class SocketCreateException: public std::exception
 {
@@ -22,7 +22,7 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_1
+// EXCEPTION_NET_RPI_1
 
 class HostnameLookupException: public std::exception
 {
@@ -40,7 +40,7 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_2
+// EXCEPTION_NET_RPI_2
 
 class ServerConnectException: public std::exception
 {
@@ -58,15 +58,15 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_3
+// EXCEPTION_NET_RPI_3
 
-class ServerWritexception: public std::exception
+class ServerWriteException: public std::exception
 {
 private:
     const std::string _error;
 	
 public:
-    ServerWritexception(const std::string error): _error(error) {}
+    ServerWriteException(const std::string error): _error(error) {}
 	
     virtual const char* what() const throw()
     {

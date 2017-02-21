@@ -21,6 +21,7 @@
   <Build xsi:type="com.visualgdb.build.make">
     <MakeFilePathRelativeToSourceDir>Makefile</MakeFilePathRelativeToSourceDir>
     <MakeConfigurationName>Release</MakeConfigurationName>
+    <AdditionalMakeArguments />
     <Toolchain>
       <Name>Raspberry PI</Name>
       <UniqueID>com.visualgdb.raspberry_pi</UniqueID>
@@ -98,18 +99,6 @@
       <EnableNonStopMode>false</EnableNonStopMode>
     </AdditionalGDBSettings>
     <LaunchGDBSettings xsi:type="GDBLaunchParametersNewInstance">
-      <GDBEnvironment>
-        <Records>
-          <Record>
-            <VariableName>LANG</VariableName>
-            <Value>en_US.UTF-8</Value>
-          </Record>
-          <Record>
-            <VariableName>PATH</VariableName>
-            <Value>C:\SysGCC\raspberry\bin;%PATH%</Value>
-          </Record>
-        </Records>
-      </GDBEnvironment>
       <DebuggedProgram>$(TargetPath)</DebuggedProgram>
       <GDBServerPort>2000</GDBServerPort>
       <ProgramArguments />
@@ -118,9 +107,11 @@
     <DeploymentTargetPath>/tmp/$(TargetFileName)</DeploymentTargetPath>
     <X11WindowMode>Local</X11WindowMode>
     <KeepConsoleAfterExit>false</KeepConsoleAfterExit>
-    <RunGDBUnderSudo>false</RunGDBUnderSudo>
+    <RunGDBUnderSudo>true</RunGDBUnderSudo>
     <DeploymentMode>Auto</DeploymentMode>
+    <LdLibraryPath />
     <DeployWhenLaunchedWithoutDebugging>true</DeployWhenLaunchedWithoutDebugging>
+    <SuppressTTYCreation>false</SuppressTTYCreation>
   </Debug>
   <CustomBuild>
     <PreSyncActions />
@@ -140,6 +131,7 @@
     <ShowMessageAfterExecuting>true</ShowMessageAfterExecuting>
   </CustomShortcuts>
   <UserDefinedVariables />
+  <ImportedPropertySheets />
   <CodeSense>
     <Enabled>Unknown</Enabled>
     <ExtraSettings>

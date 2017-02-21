@@ -122,7 +122,7 @@ void BluetoothController::closeHCIDevice(void)
     hci_close_dev(_hciDeviceHandle);
 }
 
-struct hci_request BluetoothController::getHCIRequest_BLE(uint16_t ocf, int clen, void* status, void* cparam)
+struct hci_request BluetoothController::getHCIRequest_BLE(const unsigned short int ocf, const int clen, void* status, void* cparam)
 {
     struct hci_request hciRequest;
     
@@ -140,7 +140,7 @@ struct hci_request BluetoothController::getHCIRequest_BLE(uint16_t ocf, int clen
     return hciRequest;
 }
 
-int BluetoothController::readDeviceInput(uint8_t* outputBuffer, uint16_t outputLength)
+int BluetoothController::readDeviceInput(unsigned char* outputBuffer, unsigned short int bufferLength) const
 {  
-    return read(_hciDeviceHandle, outputBuffer, outputLength);
+    return read(_hciDeviceHandle, outputBuffer, bufferLength);
 }
