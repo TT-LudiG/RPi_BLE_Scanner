@@ -58,6 +58,7 @@
   <ItemGroup>
     <ClCompile Include="BaseController_RPi.cpp" />
     <ClCompile Include="BluetoothController.cpp" />
+    <ClCompile Include="UARTController.cpp" />
     <ClCompile Include="NetworkController_RPi.cpp" />
     <ClCompile Include="RPi_BLE_Scanner.cpp" />
   </ItemGroup>
@@ -73,6 +74,7 @@
     <ClInclude Include="BeaconState.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
+    <ClInclude Include="UARTController.h" />
     <ClInclude Include="NetworkController_RPi.h" />
     <ClInclude Include="NetworkExceptions_RPi.h" />
   </ItemGroup>
