@@ -1,103 +1,119 @@
+#include <cerrno>
+#include <cstring>
+
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 
 #include "UARTController.h"
+#include "UARTExceptions.h"
 
 UARTController::UARTController(std::string ttyDevice)
-{
-    //-------------------------
-	//----- SETUP USART 0 -----
-	//-------------------------
+{  
+    _uartFileHandle = open(ttyDevice.c_str(), O_RDWR | O_NOCTTY);
     
-	//At bootup, pins 8 and 10 are already set to UART0_TXD, UART0_RXD (ie the alt0 function) respectively.
-    
-    int _uartFileHandle = -1;
-	
-    //OPEN THE UART
-    
-    //The flags (defined in fcntl.h):
-    //	Access modes (use 1 of these):
-    //		O_RDONLY - Open for reading only.
-    //		O_RDWR - Open for reading and writing.
-    //		O_WRONLY - Open for writing only.
-    //
-    //	O_NDELAY / O_NONBLOCK (same function) - Enables nonblocking mode. When set read requests on the file can return immediately with a failure status
-    //											if there is no input immediately available (instead of blocking). Likewise, write requests can also return
-    //											immediately with a failure status if the output can't be written immediately.
-    //
-    //	O_NOCTTY - When set and path identifies a terminal device, open() shall not cause the terminal device to become the controlling terminal for the process.
-    
-    _uartFileHandle = open(ttyDevice.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
-    
-    if (_uartFileHandle == -1)
+    if (_uartFileHandle < 0)
     {
-    	//ERROR - CAN'T OPEN SERIAL PORT
-//        printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
+        UARTOpenException e(std::string(std::strerror(errno)));
+        throw e;
     }
-	
-    //CONFIGURE THE UART
-    //The flags (defined in /usr/include/termios.h - see http://pubs.opengroup.org/onlinepubs/007908799/xsh/termios.h.html):
-    //	Baud rate:- B1200, B2400, B4800, B9600, B19200, B38400, B57600, B115200, B230400, B460800, B500000, B576000, B921600, B1000000, B1152000, B1500000, B2000000, B2500000, B3000000, B3500000, B4000000
-    //	CSIZE:- CS5, CS6, CS7, CS8
-    //	CLOCAL - Ignore modem status lines
-    //	CREAD - Enable receiver
-    //	IGNPAR = Ignore characters with parity errors
-    //	ICRNL - Map CR to NL on input (Use for ASCII comms where you want to auto correct end of line characters - don't use for bianry comms!)
-    //	PARENB - Parity enable
-    //	PARODD - Odd parity (else even)
     
     struct termios options;
     
-    tcgetattr(_uartFileHandle, &options);
+    std::memset(&options, 0, sizeof(options));
     
-    // Set the baud rate.
+    if (tcgetattr(_uartFileHandle, &options) < 0)
+    {
+        UARTAttributesGetException e(std::string(std::strerror(errno)));
+        throw e;
+    }
     
-    options.c_cflag = B9600 | CS8 | CLOCAL | CREAD;
-    options.c_iflag = IGNPAR;
-    options.c_oflag = 0;
-    options.c_lflag = 0;
+    // Set the POSIX terminal baud rate.
     
-    tcflush(_uartFileHandle, TCIFLUSH);
+    cfsetispeed(&options, B9600);
+    cfsetospeed(&options, B9600);
     
-    tcsetattr(_uartFileHandle, TCSANOW, &options);
+    // Disable the POSIX terminal's parity checks.
+    
+    options.c_cflag &= ~PARENB;
+    options.c_cflag &= ~CSTOPB;
+    
+    // Set POSIX terminal's char size to 8 bits.
+    
+    options.c_cflag &= ~CSIZE;
+    options.c_cflag |= CS8;
+    
+    // Set POSIX terminal as local and enable reading from the terminal.
+    
+    options.c_cflag |= CLOCAL;
+    options.c_cflag |= CREAD;
+    
+    // Set POSIX terminal output mode to raw.
+    
+    options.c_oflag &= ~OPOST;
+    
+    // Set the POSIX terminal to non-canonical mode, disable echoing and disable interrupts.
+
+    options.c_lflag &= ~ICANON;
+    options.c_lflag &= ~ECHO;
+    options.c_lflag &= ~ECHOE;
+    options.c_lflag &= ~ISIG;
+    
+    // Set the read timeout to 0.1 seconds, and the minimum chars-to-read count to 0.
+    
+    options.c_cc[VTIME] = 1;
+    options.c_cc[VMIN] = 0;
+    
+    if (tcsetattr(_uartFileHandle, TCSAFLUSH, &options) < 0)
+    {
+        UARTAttributesSetException e(std::string(std::strerror(errno)));
+        throw e;
+    }
 }
 
 UARTController::~UARTController(void)
-{
-    // Close the UART.
-    
+{   
     close(_uartFileHandle);
 }
     
-void UARTController::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength)
+int UARTController::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
-    if (_uartFileHandle != -1)
-    {
-        int count = write(_uartFileHandle, static_cast<void*>(inputBuffer), bufferLength);		//Filestream, bytes to write, number of bytes to write.
-        
-        if (count < 0)
-        {
-//            printf("UART TX error\n");
-        }
-    }
-}
-
-int UARTController::receiveBuffer(unsigned char* outputBuffer)
-{
-    //----- CHECK FOR ANY RX BYTES -----
+    int bytesCount = -1;
     
     if (_uartFileHandle != -1)
     {
-    	// Read up to 255 characters from the port if they are there
-        
-        int bufferLength = read(_uartFileHandle, static_cast<void*>(outputBuffer), 255);		//Filestream, buffer to store in, number of bytes to read (max)
-        
-        if (bufferLength < 0)
+        try
         {
-        	//An error occured (will occur if there are no bytes)
+            bytesCount = write(_uartFileHandle, static_cast<void*>(inputBuffer), bufferLength);
         }
         
-        return bufferLength;
+        catch (const std::exception&)
+        {
+            UARTWriteException e(std::string(std::strerror(errno)));
+            throw e;
+        }
     }
+    
+    return bytesCount;
+}
+
+int UARTController::receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength)
+{
+    int bytesCount = -1;
+
+    if (_uartFileHandle != -1)
+    {
+        try
+        {
+            bytesCount = read(_uartFileHandle, static_cast<void*>(outputBuffer), bufferLength);
+        }
+        
+        catch (const std::exception&)
+        {
+            UARTReadException e(std::string(std::strerror(errno)));
+            throw e;
+        }
+    }
+
+    return bytesCount;
 }

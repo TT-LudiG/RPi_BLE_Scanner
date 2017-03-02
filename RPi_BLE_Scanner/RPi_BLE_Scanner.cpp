@@ -10,7 +10,7 @@ int main(void)
     
     try
     {
-        baseControllerPtr = new BaseController_RPi();
+        baseControllerPtr = new BaseController_RPi("intellibolt.dyndns.org", 8062);
     }
     
     catch (const std::exception& e)

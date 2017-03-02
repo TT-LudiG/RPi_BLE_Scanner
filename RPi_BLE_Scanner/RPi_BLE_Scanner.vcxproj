@@ -58,6 +58,7 @@
   <ItemGroup>
     <ClCompile Include="BaseController_RPi.cpp" />
     <ClCompile Include="BluetoothController.cpp" />
+    <ClCompile Include="GSMController.cpp" />
     <ClCompile Include="UARTController.cpp" />
     <ClCompile Include="NetworkController_RPi.cpp" />
     <ClCompile Include="RPi_BLE_Scanner.cpp" />
@@ -74,9 +75,14 @@
     <ClInclude Include="BeaconState.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
+    <ClInclude Include="GSMController.h" />
+    <ClInclude Include="GSMExceptions.h" />
+    <ClInclude Include="HTTPRequest.h" />
+    <ClInclude Include="HTTPRequest_POST.h" />
     <ClInclude Include="UARTController.h" />
     <ClInclude Include="NetworkController_RPi.h" />
     <ClInclude Include="NetworkExceptions_RPi.h" />
+    <ClInclude Include="UARTExceptions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

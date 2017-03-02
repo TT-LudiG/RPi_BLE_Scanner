@@ -4,7 +4,7 @@
 #include <exception>
 #include <string>
 
-// EXCEPTION_BLUE_RPI_0
+// EXCEPTION_BLUE_0
 
 class SocketCreateException: public std::exception
 {
@@ -22,7 +22,7 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_1
+// EXCEPTION_BLUE_1
 
 class HostnameLookupException: public std::exception
 {
@@ -40,7 +40,7 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_2
+// EXCEPTION_BLUE_2
 
 class ServerConnectException: public std::exception
 {
@@ -58,7 +58,7 @@ public:
     }
 };
 
-// EXCEPTION_BLUE_RPI_3
+// EXCEPTION_BLUE_3
 
 class ServerWritexception: public std::exception
 {

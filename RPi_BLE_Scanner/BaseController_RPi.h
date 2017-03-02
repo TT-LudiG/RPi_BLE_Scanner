@@ -8,6 +8,7 @@
 
 #include "BeaconState.h"
 #include "BluetoothController.h"
+#include "GSMController.h"
 #include "NetworkController_RPi.h"
 
 class BaseController_RPi
@@ -16,6 +17,8 @@ private:
     NetworkController_RPi* _networkControllerPtr = nullptr;
     
     BluetoothController* _bluetoothControllerPtr = nullptr;
+    
+    GSMController* _gsmControllerPtr = nullptr;
 
     std::atomic<bool> _isDone;
 

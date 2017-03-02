@@ -25,7 +25,9 @@ public:
     
     ~NetworkController_RPi(void);
 	
-    void sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const;
+    int sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const;
+    
+    int receiveBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const;
 };
 
 #endif

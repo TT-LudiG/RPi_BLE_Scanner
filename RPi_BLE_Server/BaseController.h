@@ -40,8 +40,6 @@ public:
     void monitorClients(void);
 
     void finalise(void);
-
-    //bool sendActionPacket(unsigned int clientId);
 };
 
 #endif

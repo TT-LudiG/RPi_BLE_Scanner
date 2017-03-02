@@ -150,44 +150,34 @@ bool NetworkController::acceptNewClient(const unsigned int clientId)
     return false;
 }
 
-// Method to attempt to receive incoming data from a client.
+// Method to attempt to send outgoing data to a client.
 
-int NetworkController::receiveFromClient(const unsigned int clientId, unsigned char* outputBuffer)
+int NetworkController::sendBufferToClient(const unsigned int clientId, unsigned char* outputBuffer, const unsigned long int bufferLength)
 {
+    int result = -1;
+
     if (_clientSockets.find(clientId) != _clientSockets.end())
     {
         SOCKET currentSocket = _clientSockets[clientId];
 
-        int result = recv(currentSocket, reinterpret_cast<char*>(outputBuffer), SOCKET_BUFFER_SIZE_MAX, 0);
-
-        return result;
+        result = send(currentSocket, reinterpret_cast<char*>(outputBuffer), bufferLength, 0);
     }
 
-    return 0;
+    return result;
 }
 
-// Method to send outgoing data to a client (error-prone).
+// Method to attempt to receive incoming data from a client.
 
-//bool NetworkController::sendToClient(unsigned int clientId, const Packet& packet)
-//{
-//    if (_clientSockets.find(clientId) != _clientSockets.end())
-//    {
-//        SOCKET currentSocket = _clientSockets[clientId];
-//
-//        const unsigned int packetSize = sizeof(packet);
-//
-//        char packetBuffer[packetSize];
-//	
-//        packet.serialise(packetBuffer);
-//
-//        int result = send(currentSocket, packetBuffer, packetSize, 0);
-//
-//        if (result == SOCKET_ERROR)
-//            closesocket(currentSocket);
-//
-//        else
-//            return true;
-//    }
-//
-//    return false;
-//}
+int NetworkController::receiveBufferFromClient(const unsigned int clientId, unsigned char* outputBuffer)
+{
+    int result = -1;
+
+    if (_clientSockets.find(clientId) != _clientSockets.end())
+    {
+        SOCKET currentSocket = _clientSockets[clientId];
+
+        result = recv(currentSocket, reinterpret_cast<char*>(outputBuffer), SOCKET_BUFFER_SIZE_MAX, 0);
+    }
+
+    return result;
+}

@@ -12,8 +12,8 @@ public:
     UARTController(std::string ttyDevice);
     ~UARTController(void);
     
-    void sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength);
+    int sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength);
     
-    int receiveBuffer(unsigned char* outputBuffer);
+    int receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength);
 };
 #endif

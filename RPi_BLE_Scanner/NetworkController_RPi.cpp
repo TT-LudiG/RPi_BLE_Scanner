@@ -57,9 +57,9 @@ void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressO
     addressOutput->sin_addr = *reinterpret_cast<struct in_addr*>(hostInfo->h_addr);
 }
 
-void NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
+int NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
-    int bytesCount;
+    int bytesCount = -1;
 
     bytesCount = write(_socket, static_cast<void*>(inputBuffer), bufferLength);
 	
@@ -68,4 +68,21 @@ void NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigne
         ServerWriteException e(std::string(std::strerror(errno)));
         throw e;
     }
+    
+    return bytesCount;
+}
+
+int NetworkController_RPi::receiveBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
+{
+    int bytesCount = -1;
+
+    bytesCount = read(_socket, static_cast<void*>(inputBuffer), bufferLength);
+	
+    if (bytesCount < 0)
+    {
+        ServerWriteException e(std::string(std::strerror(errno)));
+        throw e;
+    }
+    
+    return bytesCount;
 }

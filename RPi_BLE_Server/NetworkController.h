@@ -36,13 +36,13 @@ public:
 
     bool acceptNewClient(const unsigned int clientId);
 
+    // Method to attempt to send outgoing data to a client.
+
+    int sendBufferToClient(const unsigned int clientId, unsigned char* outputBuffer, const unsigned long int bufferLength);
+
     // Method to attempt to receive incoming data from a client.
 
-    int receiveFromClient(const unsigned int clientId, unsigned char* outputBuffer);
-
-    // Method to send outgoing data to a client (error-prone).
-
-    //bool sendToClient(unsigned int clientId, const Packet& packet);
+    int receiveBufferFromClient(const unsigned int clientId, unsigned char* outputBuffer);
 };
 
 #endif

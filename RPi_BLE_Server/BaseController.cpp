@@ -100,7 +100,7 @@ void BaseController::listenOnClient(const unsigned int clientId)
     {
         // Get the data for this client.
 
-        int bufferLength = _networkControllerPtr->receiveFromClient(clientId, buffer);
+        int bufferLength = _networkControllerPtr->receiveBufferFromClient(clientId, buffer);
 
         if (bufferLength > 0)
         {
@@ -126,7 +126,7 @@ void BaseController::listenOnClient(const unsigned int clientId)
 
                 memcpy(static_cast<void*>(&messageLength), buffer + currentIndex, 1);
 
-                if (messageLength > bufferLength)
+                if (static_cast<int>(messageLength) > bufferLength)
                     break;
 
                 currentIndex += 1;
@@ -162,7 +162,7 @@ void BaseController::listenOnClient(const unsigned int clientId)
 
                 std::cout << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
 
-                i += messageLength;
+                i += static_cast<int>(messageLength);
             }
         }
 
@@ -186,17 +186,3 @@ void BaseController::finalise(void)
     for (it = _threads.begin(); it != _threads.end(); ++it)
         it->second->join();
 }
-
-//bool BaseController::sendActionPacket(unsigned int clientId)
-//{
-//    const unsigned int packetLength = sizeof(Packet);
-//
-//    char packetBuffer[packetLength];
-//
-//    Packet packet;
-//    packet.type = PacketType::ACTION;
-//
-//    packet.serialise(packetBuffer);
-//
-//    return _networkControllerPtr->sendToClient(clientId, packetBuffer, packetLength);
-//}

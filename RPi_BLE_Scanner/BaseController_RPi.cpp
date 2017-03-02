@@ -3,7 +3,11 @@
 #include <iostream>
 #include <thread>
 
+#include <iomanip>
+#include <sstream>
+
 #include "BaseController_RPi.h"
+#include "HTTPRequest_POST.h"
 
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -13,6 +17,8 @@ BaseController_RPi::BaseController_RPi(void)
     
     _bluetoothControllerPtr = new BluetoothController();
     
+    _gsmControllerPtr = new GSMController();
+    
     _isDone = false;
     
     _isReady = false;
@@ -20,6 +26,18 @@ BaseController_RPi::BaseController_RPi(void)
     _hasWoken = false;
     _beaconsCount = 0;
     _loopsCount = 0;
+    
+    HTTPRequest_POST message("/api/v1/SetRecord");
+    
+    unsigned char content[] = {"{ \"BoltIdentifier\":\"1001\" , \"HostID\":\"1\" , \"Battery\":100 , \"SensorLow\":12 , \"SensorHigh\":10 , \"DateTime\":\"2016-08-02 13:16:10\" }"};
+    
+    message.setContent(content, sizeof(content));
+    
+    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+    
+    unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+    
+    _networkControllerPtr->sendBuffer(buffer, bufferLength);
 }
 
 BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port)
@@ -174,7 +192,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::cout << idString << "|" << state.Temperature << "|" << state.Humidity << "|" << static_cast<int>(state.Battery) << "|" << time << std::endl;
             
-            _networkControllerPtr->sendBuffer(buffer, bufferLength);
+//            _networkControllerPtr->sendBuffer(buffer, bufferLength);
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
