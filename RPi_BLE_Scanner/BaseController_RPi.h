@@ -42,7 +42,6 @@ private:
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
 public:
-    BaseController_RPi(void);
     BaseController_RPi(const std::string serverName, const unsigned int port);
     
     ~BaseController_RPi(void);

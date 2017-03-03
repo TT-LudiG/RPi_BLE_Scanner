@@ -76,7 +76,7 @@ UARTController::~UARTController(void)
     close(_uartFileHandle);
 }
     
-int UARTController::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength)
+int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
     int bytesCount = -1;
     
@@ -84,7 +84,7 @@ int UARTController::sendBuffer(unsigned char* inputBuffer, const unsigned long i
     {
         try
         {
-            bytesCount = write(_uartFileHandle, static_cast<void*>(inputBuffer), bufferLength);
+            bytesCount = write(_uartFileHandle, static_cast<const void*>(inputBuffer), bufferLength);
         }
         
         catch (const std::exception&)

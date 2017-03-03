@@ -5,9 +5,6 @@
 
 #include <netinet/in.h>
 
-#define SERVERNAME "thermotrack.dyndns.org"
-#define PORT 2226
-
 class NetworkController_RPi
 {
 private:
@@ -21,7 +18,7 @@ private:
     static void initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, const unsigned short int port);
 	
 public:
-    NetworkController_RPi(const std::string serverName = SERVERNAME, const unsigned short int port = PORT);
+    NetworkController_RPi(const std::string serverName, const unsigned short int port);
     
     ~NetworkController_RPi(void);
 	

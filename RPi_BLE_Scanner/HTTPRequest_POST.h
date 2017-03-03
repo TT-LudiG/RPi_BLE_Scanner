@@ -21,7 +21,7 @@ private:
     unsigned char _content[HTTP_REQUEST_POST_CONTENT_LENGTH_MAX];
     
 public:
-    HTTPRequest_POST(std::string requestURI): HTTPRequest("POST", requestURI), _contentType(HTTP_REQUEST_POST_CONTENT_TYPE), _contentLength(0) {}
+    HTTPRequest_POST(std::string requestURI, std::string host): HTTPRequest("POST", requestURI, host), _contentType(HTTP_REQUEST_POST_CONTENT_TYPE), _contentLength(0) {}
     
     bool setContent(unsigned char* inputBuffer, const unsigned long int bufferLength)
     {
@@ -42,6 +42,8 @@ public:
         std::stringstream outputStream;
         
         outputStream << _method << " " << _requestURI << " " << _versionHTTP << "\r\n";
+        
+        outputStream << "Host: " << _host << "\r\n";
         
         outputStream << "Content-Type: " << _contentType << "\r\n";
         
