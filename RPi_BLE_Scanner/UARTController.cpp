@@ -14,7 +14,7 @@ UARTController::UARTController(std::string ttyDevice)
     
     if (_uartFileHandle < 0)
     {
-        UARTOpenException e(std::string(std::strerror(errno)));
+        UARTExceptions::TerminalOpenException e(std::string(std::strerror(errno)));
         throw e;
     }
     
@@ -24,7 +24,7 @@ UARTController::UARTController(std::string ttyDevice)
     
     if (tcgetattr(_uartFileHandle, &options) < 0)
     {
-        UARTAttributesGetException e(std::string(std::strerror(errno)));
+        UARTExceptions::TerminalAttributesGetException e(std::string(std::strerror(errno)));
         throw e;
     }
     
@@ -66,7 +66,7 @@ UARTController::UARTController(std::string ttyDevice)
     
     if (tcsetattr(_uartFileHandle, TCSAFLUSH, &options) < 0)
     {
-        UARTAttributesSetException e(std::string(std::strerror(errno)));
+        UARTExceptions::TerminalAttributesSetException e(std::string(std::strerror(errno)));
         throw e;
     }
 }
@@ -89,7 +89,7 @@ int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
         
         catch (const std::exception&)
         {
-            UARTWriteException e(std::string(std::strerror(errno)));
+            UARTExceptions::TerminalWriteException e(std::string(std::strerror(errno)));
             throw e;
         }
     }
@@ -110,7 +110,7 @@ int UARTController::receiveBuffer(unsigned char* outputBuffer, const unsigned lo
         
         catch (const std::exception&)
         {
-            UARTReadException e(std::string(std::strerror(errno)));
+            UARTExceptions::TerminalReadException e(std::string(std::strerror(errno)));
             throw e;
         }
     }

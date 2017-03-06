@@ -13,7 +13,11 @@ private:
     std::string _serverName;
     unsigned short int _port;
     
+    bool _isConnectedToServer;
+    
     std::string getATResponse(unsigned char* inputBuffer, const unsigned long int bufferLength);
+    
+    bool hasCorrectResponse(std::string correctResponse);
     
 public:
     GSMController(void);
@@ -25,7 +29,7 @@ public:
     
     void sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
-    void receiveBuffer(unsigned char* outputBuffer);
+//    void receiveBuffer(unsigned char* outputBuffer);
     
     void disconnectFromServer(void);
 };

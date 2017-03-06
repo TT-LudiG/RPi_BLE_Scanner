@@ -17,7 +17,7 @@ NetworkController_RPi::NetworkController_RPi(const std::string serverName, const
 	
     if (_socket < 0)
     {	
-        SocketCreateException e(std::string(std::strerror(errno)));
+        NetworkExceptions_RPi::SocketCreateException e(std::string(std::strerror(errno)));
         throw e;
     }
 	
@@ -27,7 +27,7 @@ NetworkController_RPi::NetworkController_RPi(const std::string serverName, const
 	
     if (connect(_socket, (struct sockaddr*)&_addressServer, sizeof(_addressServer)) < 0)
     {      
-        ServerConnectException e(std::string(std::strerror(errno)));
+        NetworkExceptions_RPi::ServerConnectException e(std::string(std::strerror(errno)));
         throw e;
     }
 }
@@ -48,7 +48,7 @@ void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressO
 	
     if (hostInfo == NULL)
     {
-        HostnameLookupException e((std::string(hostname)));
+        NetworkExceptions_RPi::HostnameLookupException e((std::string(hostname)));
         throw e;
     }
     
@@ -65,7 +65,7 @@ int NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigned
 	
     if (bytesCount < 0)
     {
-        ServerWriteException e(std::string(std::strerror(errno)));
+        NetworkExceptions_RPi::ServerWriteException e(std::string(std::strerror(errno)));
         throw e;
     }
     
@@ -80,7 +80,7 @@ int NetworkController_RPi::receiveBuffer(unsigned char* inputBuffer, const unsig
 	
     if (bytesCount < 0)
     {
-        ServerWriteException e(std::string(std::strerror(errno)));
+        NetworkExceptions_RPi::ServerWriteException e(std::string(std::strerror(errno)));
         throw e;
     }
     

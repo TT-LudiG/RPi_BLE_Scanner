@@ -6,42 +6,38 @@
 #include "GSMController.h"
 #include "GSMExceptions.h"
 
+#define GSM_CONTROLLER_GET_RESPONSE_ATTEMPT_MAX 20
+
 GSMController::GSMController(void)
 {
-    // AT Command: AT
-    
 	_uartControllerPtr = new UARTController("//dev/serial0");
+    
+    _isConnectedToServer = false;
+    
+    // AT Command: AT
     
     unsigned char command[] = {"AT\r"};
     
     if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
     {
-        GSMBaseInitialiseException e;
+        GSMExceptions::BaseInitialiseException e;
         throw e;
     }
     
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    unsigned char response[255];
-    
-    int responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-    if (responseLength < 0)
+    if (!hasCorrectResponse("ATOK"))
     {
-        GSMBaseInitialiseException e;
-        throw e;
-    }
-    
-    if (getATResponse(response, responseLength) != "OK")
-    {
-        GSMBaseInitialiseException e;
+        GSMExceptions::BaseInitialiseException e;
         throw e;
     }
 }
 
 GSMController::~GSMController(void)
 {
-    disconnectFromServer();
+    if (_isConnectedToServer)
+        disconnectFromServer();
+    
+    if (_uartControllerPtr != nullptr)
+        delete _uartControllerPtr;
 }
 
 void GSMController::initialiseGPRS(void)
@@ -53,25 +49,13 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
-    
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        int responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        
+        if (!hasCorrectResponse("AT+CGATT?+CGATT: 1OK"))
         {
-            GSMGPRSInitialiseException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "+CGATT:1")
-        {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     }
@@ -83,25 +67,13 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        if (!hasCorrectResponse("AT+CIPSHUTSHUT OK"))
         {
-            GSMGPRSInitialiseException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "SHUT OK")
-        {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     }
@@ -113,25 +85,13 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        if (!hasCorrectResponse("AT+CIPMUX=0OK"))
         {
-            GSMGPRSInitialiseException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "OK")
-        {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     }
@@ -143,25 +103,13 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        if (!hasCorrectResponse("AT+CSTT=\"internet\"OK"))
         {
-            GSMGPRSInitialiseException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "OK")
-        {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     }
@@ -173,25 +121,13 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
-    
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        
+        if (!hasCorrectResponse("AT+CIICROK"))
         {
-            GSMGPRSInitialiseException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "OK")
-        {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     }
@@ -203,19 +139,19 @@ void GSMController::initialiseGPRS(void)
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
-    
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
         unsigned char response[255];
     
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
+        int responseLength = _uartControllerPtr->receiveBuffer(response, 255);
     
         if (responseLength < 0)
         {
-            GSMGPRSInitialiseException e;
+            GSMExceptions::GPRSInitialiseException e;
             throw e;
         }
     
@@ -241,27 +177,17 @@ void GSMController::connectToServer(std::string serverName, unsigned short int p
     
     if (_uartControllerPtr->sendBuffer(command, commandLength) < 0)
     {
-        GSMServerConnectException e(serverName, port);
+        GSMExceptions::ServerConnectException e(serverName, port);
         throw e;
     }
     
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    unsigned char response[255];
-    
-    unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-    if (responseLength < 0)
+    if (!hasCorrectResponse(commandString.substr(0, commandLength - 1) + "OKCONNECT OK"))
     {
-        GSMServerConnectException e(serverName, port);
+        GSMExceptions::ServerConnectException e(serverName, port);
         throw e;
     }
     
-    if (getATResponse(response, responseLength) != "Connected")
-    {
-        GSMServerConnectException e(serverName, port);
-        throw e;
-    }
+    _isConnectedToServer = true;
 }
 
 void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
@@ -273,25 +199,13 @@ void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     
         if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
         {
-            GSMBufferSendException e;
+            GSMExceptions::BufferSendException e;
             throw e;
         }
-    
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
+        
+        if (!hasCorrectResponse("AT+CIPSEND> "))
         {
-            GSMBufferSendException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != ">")
-        {
-            GSMBufferSendException e;
+            GSMExceptions::BufferSendException e;
             throw e;
         }
     
@@ -303,71 +217,37 @@ void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     
         if (_uartControllerPtr->sendBuffer(buffer, bufferLength + 1) < 0)
         {
-            GSMBufferSendException e;
+            GSMExceptions::BufferSendException e;
             throw e;
         }
-    }
-    
-    // AT Command: AT+CIPSHUT
-    
-    {
-        unsigned char command[] = {"AT+CIPSHUT\r"};
-    
-        if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
+        
+        std::string bufferString(buffer, buffer + bufferLength + 1);
+        
+        if (!hasCorrectResponse(bufferString + "SEND OK"))
         {
-            GSMBufferSendException e;
-            throw e;
-        }
-    
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-        unsigned char response[255];
-    
-        unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-        if (responseLength < 0)
-        {
-            GSMBufferSendException e;
-            throw e;
-        }
-    
-        if (getATResponse(response, responseLength) != "SHUT OK")
-        {
-            GSMBufferSendException e;
+            GSMExceptions::BufferSendException e;
             throw e;
         }
     }
 }
 
-void GSMController::receiveBuffer(unsigned char* outputBuffer) {}
+//void GSMController::receiveBuffer(unsigned char* outputBuffer) {}
 
 void GSMController::disconnectFromServer(void)
-{
+{  
     // AT Command: AT+CIPCLOSE
     
     unsigned char command[] = {"AT+CIPCLOSE\r"};
     
     if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
     {
-        GSMServerDisconnectException e;
+        GSMExceptions::ServerDisconnectException e;
         throw e;
     }
     
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    unsigned char response[255];
-    
-    unsigned char responseLength = _uartControllerPtr->receiveBuffer(response, sizeof(response));
-    
-    if (responseLength < 0)
+    if (!hasCorrectResponse("AT+CIPCLOSECLOSE OK"))
     {
-        GSMServerDisconnectException e;
-        throw e;
-    }
-    
-    if (getATResponse(response, responseLength) != "OK")
-    {
-        GSMServerDisconnectException e;
+        GSMExceptions::ServerDisconnectException e;
         throw e;
     }
 }
@@ -376,21 +256,43 @@ std::string GSMController::getATResponse(unsigned char* inputBuffer, const unsig
 {
     std::stringstream responseStream;
     
-    bool isResponse = false;
-    
     for (int i = 0; i < bufferLength; ++i)
     {
         unsigned char currentChar = inputBuffer[i];
         
-        if (isResponse)
-        {        
-            if ((currentChar != '\r') && (currentChar != '\n'))
-                responseStream << currentChar;
-        }
-        
-        else if ((currentChar == '\r') || (currentChar == '\n'))
-            isResponse = true;
+        if ((currentChar != '\r') && (currentChar != '\n'))
+            responseStream << currentChar;
     }
     
     return responseStream.str();
+}
+
+bool GSMController::hasCorrectResponse(std::string correctResponse)
+{
+    unsigned char response[255];
+    
+    std::memset(response, 0, 255);
+    
+    unsigned int responseLength = 0;
+    
+    unsigned int attempt = 0;
+    
+    while (getATResponse(response, responseLength) != correctResponse)
+    {
+        ++attempt;
+        
+        if (attempt > GSM_CONTROLLER_GET_RESPONSE_ATTEMPT_MAX)
+            return false;
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        int receiveLength = _uartControllerPtr->receiveBuffer(response + responseLength, 255);
+    
+        if (receiveLength < 0)
+            return false;
+        
+        responseLength += receiveLength;
+    }
+    
+    return true;
 }

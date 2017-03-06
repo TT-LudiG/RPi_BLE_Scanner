@@ -7,7 +7,6 @@
 #include <sstream>
 
 #include "BaseController_RPi.h"
-#include "HTTPRequest_GET.h"
 #include "HTTPRequest_POST.h"
 
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -17,6 +16,12 @@ BaseController_RPi::BaseController_RPi(const std::string serverName, const unsig
     _networkControllerPtr = new NetworkController_RPi(serverName, port);
     
     _bluetoothControllerPtr = new BluetoothController();
+    
+    _gsmControllerPtr = new GSMController();
+    
+    _gsmControllerPtr->initialiseGPRS();
+    
+    _gsmControllerPtr->connectToServer(serverName, port);
     
     _isDone = false;
     
@@ -44,15 +49,21 @@ BaseController_RPi::~BaseController_RPi(void)
     std::map<std::string, BeaconState*>::const_iterator it;
     
     for (it = _beacons.begin(); it != _beacons.end(); ++it)
-        delete it->second;
+        if (it->second != nullptr)
+            delete it->second;
     
-    delete _networkControllerPtr;
+    if (_networkControllerPtr != nullptr)
+        delete _networkControllerPtr;
     
     _bluetoothControllerPtr->stopHCIScan_BLE();
     
     _bluetoothControllerPtr->closeHCIDevice();
     
-    delete _bluetoothControllerPtr;
+    if (_bluetoothControllerPtr != nullptr)
+        delete _bluetoothControllerPtr;
+    
+    if (_gsmControllerPtr != nullptr)
+        delete _gsmControllerPtr;
 }
 
 void BaseController_RPi::monitorSenderThread(void)
@@ -177,6 +188,8 @@ void BaseController_RPi::sendDataPeriodically(void)
             std::cout << idString << "|" << state.Temperature << "|" << state.Humidity << "|" << static_cast<int>(state.Battery) << "|" << time << std::endl;
             
             _networkControllerPtr->sendBuffer(buffer, bufferLength);
+            
+//            _gsmControllerPtr->sendBuffer(buffer, bufferLength);
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             

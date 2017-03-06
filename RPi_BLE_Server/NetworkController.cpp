@@ -24,7 +24,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
     if (result != 0)
     {
-        WinSock2Exception e;
+        NetworkExceptions::WinSock2Exception e;
         throw e;
     }
 
@@ -45,7 +45,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
     {
         WSACleanup();
 
-        ServerAddressException e;
+        NetworkExceptions::ServerAddressException e;
         throw e;
     }
 
@@ -59,7 +59,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
         WSACleanup();
 
-        SocketGatewayException e;
+        NetworkExceptions::SocketGatewayException e;
         throw e;
     }
 
@@ -75,7 +75,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
         WSACleanup();
 
-        BlockingNonException e;
+        NetworkExceptions::BlockingNonException e;
         throw e;
     }
 
@@ -91,7 +91,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
         WSACleanup();
 
-        BindTCPException e;
+        NetworkExceptions::BindTCPException e;
         throw e;
     }
 
@@ -109,7 +109,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
         WSACleanup();
 
-        SocketListeningException e;
+        NetworkExceptions::SocketListeningException e;
         throw e;
     }
 }

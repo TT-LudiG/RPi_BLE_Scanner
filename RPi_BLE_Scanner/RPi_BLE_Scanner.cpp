@@ -4,15 +4,15 @@
 
 #include "BaseController_RPi.h"
 
-//#define SERVERNAME "thermotrack.dyndns.org"
-//#define PORT 2226
+#define SERVERNAME "thermotrack.dyndns.org"
+#define PORT 2226
 
-#define SERVERNAME "intellibolt.dyndns.org"
-#define PORT 8062
+//#define SERVERNAME "intellibolt.dyndns.org"
+//#define PORT 8062
 
 int main(int argc, char* argv[])
 {
-    std::string servername = SERVERNAME;   
+    std::string servername = SERVERNAME;
     unsigned short int port = PORT;
     
     std::string currentParam;
@@ -70,7 +70,8 @@ int main(int argc, char* argv[])
     {
         std::cerr << e.what() << std::endl;
         
-        delete baseControllerPtr;
+        if (baseControllerPtr != nullptr)
+            delete baseControllerPtr;
         
         return 1;
     }
@@ -96,7 +97,8 @@ int main(int argc, char* argv[])
     monitorThread.join();
     senderThread.join();
     
-    delete baseControllerPtr;
+    if (baseControllerPtr != nullptr)
+        delete baseControllerPtr;
 
 	return 0;
 }
