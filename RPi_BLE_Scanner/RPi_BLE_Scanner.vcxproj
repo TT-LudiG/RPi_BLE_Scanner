@@ -78,6 +78,7 @@
     <ClInclude Include="GSMController.h" />
     <ClInclude Include="GSMExceptions.h" />
     <ClInclude Include="HTTPRequest.h" />
+    <ClInclude Include="HTTPRequest_GET.h" />
     <ClInclude Include="HTTPRequest_POST.h" />
     <ClInclude Include="UARTController.h" />
     <ClInclude Include="NetworkController_RPi.h" />

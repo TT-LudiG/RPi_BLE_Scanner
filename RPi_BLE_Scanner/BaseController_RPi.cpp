@@ -11,41 +11,18 @@
 
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-BaseController_RPi::BaseController_RPi(void)
-{
-    _networkControllerPtr = new NetworkController_RPi();
-    
-    _bluetoothControllerPtr = new BluetoothController();
-    
-    _gsmControllerPtr = new GSMController();
-    
-    _isDone = false;
-    
-    _isReady = false;
-    _isWaiting = false;
-    _hasWoken = false;
-    _beaconsCount = 0;
-    _loopsCount = 0;
-    
-    HTTPRequest_POST message("/api/v1/SetRecord");
-    
-    unsigned char content[] = {"{ \"BoltIdentifier\":\"1001\" , \"HostID\":\"1\" , \"Battery\":100 , \"SensorLow\":12 , \"SensorHigh\":10 , \"DateTime\":\"2016-08-02 13:16:10\" }"};
-    
-    message.setContent(content, sizeof(content));
-    
-    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-    
-    unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
-    
-    _networkControllerPtr->sendBuffer(buffer, bufferLength);
-}
-
-BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port)
+BaseController_RPi::BaseController_RPi(const std::string serverName, const unsigned int port)
 {
     _networkControllerPtr = new NetworkController_RPi(serverName, port);
     
     _bluetoothControllerPtr = new BluetoothController();
     
+    _gsmControllerPtr = new GSMController();
+    
+    _gsmControllerPtr->initialiseGPRS();
+    
+    _gsmControllerPtr->connectToServer(serverName, port);
+    
     _isDone = false;
     
     _isReady = false;
@@ -53,6 +30,18 @@ BaseController_RPi::BaseController_RPi(std::string serverName, unsigned int port
     _hasWoken = false;
     _beaconsCount = 0;
     _loopsCount = 0;
+    
+//    HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
+//    
+//    unsigned char content[] = {"{ \"BoltIdentifier\":\"1001\" , \"HostID\":\"1\" , \"Battery\":100 , \"SensorLow\":12 , \"SensorHigh\":10 , \"DateTime\":\"2016-08-02 13:16:10\" }"};
+//    
+//    message.setContent(content, sizeof(content));
+//    
+//    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+//    
+//    unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+//    
+//    _networkControllerPtr->sendBuffer(buffer, bufferLength);
 }
 
 BaseController_RPi::~BaseController_RPi(void)
@@ -60,15 +49,21 @@ BaseController_RPi::~BaseController_RPi(void)
     std::map<std::string, BeaconState*>::const_iterator it;
     
     for (it = _beacons.begin(); it != _beacons.end(); ++it)
-        delete it->second;
+        if (it->second != nullptr)
+            delete it->second;
     
-    delete _networkControllerPtr;
+    if (_networkControllerPtr != nullptr)
+        delete _networkControllerPtr;
     
     _bluetoothControllerPtr->stopHCIScan_BLE();
     
     _bluetoothControllerPtr->closeHCIDevice();
     
-    delete _bluetoothControllerPtr;
+    if (_bluetoothControllerPtr != nullptr)
+        delete _bluetoothControllerPtr;
+    
+    if (_gsmControllerPtr != nullptr)
+        delete _gsmControllerPtr;
 }
 
 void BaseController_RPi::monitorSenderThread(void)
@@ -192,7 +187,9 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::cout << idString << "|" << state.Temperature << "|" << state.Humidity << "|" << static_cast<int>(state.Battery) << "|" << time << std::endl;
             
-//            _networkControllerPtr->sendBuffer(buffer, bufferLength);
+            _networkControllerPtr->sendBuffer(buffer, bufferLength);
+            
+//            _gsmControllerPtr->sendBuffer(buffer, bufferLength);
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             

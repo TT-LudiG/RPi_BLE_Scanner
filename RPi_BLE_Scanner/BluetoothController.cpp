@@ -1,6 +1,10 @@
+#include <cerrno>
+#include <cstring>
+
 #include <unistd.h>
 
 #include "BluetoothController.h"
+#include "BluetoothExceptions.h"
 
 BluetoothController::BluetoothController(void)
 {
@@ -16,13 +20,13 @@ void BluetoothController::openHCIDevice_Default(void)
 {
     if ((_hciDeviceHandle = hci_open_dev(hci_get_route(NULL))) < 0)
 	{
-//    	snprintf(hciState.ErrorMessage, sizeof(hciState.ErrorMessage), "Could not open device: %s", strerror(errno));
+    	BluetoothExceptions::HCIDeviceDefaultOpenException e(std::strerror(errno));
 	}
 }
 
 void BluetoothController::startHCIScan_BLE(void)
 {
-    // Set BLE scan parameters.
+    // Set HCI BLE scan parameters.
 	
     le_set_scan_parameters_cp scanParams;
     
@@ -39,11 +43,11 @@ void BluetoothController::startHCIScan_BLE(void)
     if (hci_send_req(_hciDeviceHandle, &setScanParams, 1000) < 0)
     {
         hci_close_dev(_hciDeviceHandle);
-    	
-//        perror("Failed to set scan parameters data.");
+        
+        BluetoothExceptions::HCIBLEScanParamSetException e(std::strerror(errno));
     }
 
-	// Set BLE events report mask.
+	// Set HCI BLE event mask.
 
     le_set_event_mask_cp eventMask;
     
@@ -59,11 +63,11 @@ void BluetoothController::startHCIScan_BLE(void)
     if (hci_send_req(_hciDeviceHandle, &setEventMask, 1000) < 0)
     {
         hci_close_dev(_hciDeviceHandle);
-    	
-//        perror("Failed to set event mask.");
+        
+        BluetoothExceptions::HCIBLEEventMaskSetException e(std::strerror(errno));
     }
 
-	// Enable scanning.
+	// Enable HCI BLE scan.
 
     le_set_scan_enable_cp scanEnable;
     
@@ -77,11 +81,11 @@ void BluetoothController::startHCIScan_BLE(void)
     if (hci_send_req(_hciDeviceHandle, &setScanEnable, 1000) < 0)
     {
         hci_close_dev(_hciDeviceHandle);
-    	
-//        perror("Failed to enable scan.");
+        
+        BluetoothExceptions::HCIBLEScanEnableException e(std::strerror(errno));
     }
 
-	// Get Results.
+	// Set HCI BLE socket options.
 
     struct hci_filter newFilter;
     
@@ -92,28 +96,30 @@ void BluetoothController::startHCIScan_BLE(void)
     if (setsockopt(_hciDeviceHandle, SOL_HCI, HCI_FILTER, &newFilter, sizeof(newFilter)) < 0)
     {
         hci_close_dev(_hciDeviceHandle);
-    	
-//        perror("Could not set socket options\n");
+        
+        BluetoothExceptions::HCIBLESocketOptionsSetException e(std::strerror(errno));
     }
 }
 
 void BluetoothController::stopHCIScan_BLE(void)
 {
-    // Disable scanning.
+    // Disable HCI BLE scan.
     
     le_set_scan_enable_cp scanEnable;
 
     memset(&scanEnable, 0, sizeof(scanEnable));
     
-    scanEnable.enable = 0x00;	// Disable flag.
+    // Set the disable flag.
+    
+    scanEnable.enable = 0x00;
 
     struct hci_request setScanEnable = getHCIRequest_BLE(OCF_LE_SET_SCAN_ENABLE, LE_SET_SCAN_ENABLE_CP_SIZE, &_hciStatus, &scanEnable);
     
     if (hci_send_req(_hciDeviceHandle, &setScanEnable, 1000) < 0)
     {
         hci_close_dev(_hciDeviceHandle);
-    	
-//        perror("Failed to disable scan.");
+        
+        BluetoothExceptions::HCIBLEScanDisableException e(std::strerror(errno));
     }
 }
 

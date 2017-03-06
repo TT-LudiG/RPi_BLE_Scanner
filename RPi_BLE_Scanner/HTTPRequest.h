@@ -14,8 +14,10 @@ protected:
     const std::string _requestURI;
     const std::string _versionHTTP;
     
+    const std::string _host;
+    
 public:
-    HTTPRequest(std::string method, std::string requestURI): _method(method), _requestURI(requestURI), _versionHTTP("HTTP/1.1") {}
+    HTTPRequest(std::string method, std::string requestURI, std::string host): _method(method), _requestURI(requestURI), _versionHTTP("HTTP/1.1"), _host(host) {}
     
     virtual unsigned long int serialise(unsigned char* outputBuffer, unsigned long int bufferLength) = 0;
 };
