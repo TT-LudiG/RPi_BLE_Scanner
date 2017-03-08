@@ -9,11 +9,10 @@ private:
     int _uartFileHandle;
     
 public:
-    UARTController(std::string ttyDevice);
+    UARTController(const std::string ttyDevice);
     ~UARTController(void);
     
-    int sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength);
-    
-    int receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength);
+    long int sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const;   
+    long int receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength) const;
 };
 #endif

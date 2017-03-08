@@ -2,6 +2,7 @@
 #define UARTEXCEPTIONS_H
 
 #include <exception>
+#include <string>
 
 namespace UARTExceptions
 {

@@ -3,41 +3,42 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <map>
 #include <mutex>
 #include <thread>
 
-#include "Client.h"
 #include "NetworkController.h"
+
+#define SESSION_TIMEOUT 1
 
 class BaseController
 {
 private:
     NetworkController* _networkControllerPtr;
 
-    std::unordered_map<unsigned int, Client*> _clients;
+    std::unordered_map<unsigned long int, std::thread*> _threads;
 
-    std::unordered_map<unsigned int, std::thread*> _threads;
+    std::mutex _mutexSession;
+    std::map<unsigned long int, bool> _sessions;
 
-    unsigned int _clientCount;
+    unsigned long int _sessionCount;
 
     std::atomic<bool> _isDone;
 
     std::mutex _mutex;
     std::atomic<bool> _isReady;
-    std::atomic<unsigned int> _isWaitingCount;
-    std::atomic<unsigned int> _hasWokenCount;
+    std::atomic<unsigned long int> _isWaitingCount;
+    std::atomic<unsigned long int> _hasWokenCount;
 
     std::condition_variable _cv;
 
-    unsigned int _clientIdNext;
-
-    void listenOnClient(const unsigned int clientId);
+    void handleSession(const unsigned long int sessionID);
 
 public:
-    BaseController(void);
+    BaseController(const unsigned short int port);
     ~BaseController(void);
 
-    void monitorClients(void);
+    void monitorThreads(void);
 
     void finalise(void);
 };

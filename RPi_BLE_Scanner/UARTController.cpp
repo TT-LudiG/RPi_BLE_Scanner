@@ -8,7 +8,7 @@
 #include "UARTController.h"
 #include "UARTExceptions.h"
 
-UARTController::UARTController(std::string ttyDevice)
+UARTController::UARTController(const std::string ttyDevice)
 {  
     _uartFileHandle = open(ttyDevice.c_str(), O_RDWR | O_NOCTTY);
     
@@ -20,7 +20,7 @@ UARTController::UARTController(std::string ttyDevice)
     
     struct termios options;
     
-    std::memset(&options, 0, sizeof(options));
+    std::memset(static_cast<void*>(&options), 0, sizeof(options));
     
     if (tcgetattr(_uartFileHandle, &options) < 0)
     {
@@ -76,9 +76,9 @@ UARTController::~UARTController(void)
     close(_uartFileHandle);
 }
     
-int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
+long int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
-    int bytesCount = -1;
+    long int bytesCount = -1;
     
     if (_uartFileHandle != -1)
     {
@@ -97,9 +97,9 @@ int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     return bytesCount;
 }
 
-int UARTController::receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength)
+long int UARTController::receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength) const
 {
-    int bytesCount = -1;
+    long int bytesCount = -1;
 
     if (_uartFileHandle != -1)
     {

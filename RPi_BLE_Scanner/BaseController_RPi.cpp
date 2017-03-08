@@ -11,17 +11,15 @@
 
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-BaseController_RPi::BaseController_RPi(const std::string serverName, const unsigned int port)
+BaseController_RPi::BaseController_RPi(const std::string servername, const unsigned short int port): _servername(servername), _port(port)
 {
-    _networkControllerPtr = new NetworkController_RPi(serverName, port);
-    
-    _bluetoothControllerPtr = new BluetoothController();
-    
+    _networkControllerPtr = new NetworkController_RPi();    
+    _bluetoothControllerPtr = new BluetoothController();  
     _gsmControllerPtr = new GSMController();
     
-    _gsmControllerPtr->initialiseGPRS();
-    
-    _gsmControllerPtr->connectToServer(serverName, port);
+//    _gsmControllerPtr->initialiseGPRS();
+//    
+//    _gsmControllerPtr->connectToServer(servername, port);
     
     _isDone = false;
     
@@ -30,18 +28,6 @@ BaseController_RPi::BaseController_RPi(const std::string serverName, const unsig
     _hasWoken = false;
     _beaconsCount = 0;
     _loopsCount = 0;
-    
-//    HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
-//    
-//    unsigned char content[] = {"{ \"BoltIdentifier\":\"1001\" , \"HostID\":\"1\" , \"Battery\":100 , \"SensorLow\":12 , \"SensorHigh\":10 , \"DateTime\":\"2016-08-02 13:16:10\" }"};
-//    
-//    message.setContent(content, sizeof(content));
-//    
-//    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-//    
-//    unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
-//    
-//    _networkControllerPtr->sendBuffer(buffer, bufferLength);
 }
 
 BaseController_RPi::~BaseController_RPi(void)
@@ -137,20 +123,20 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::string idString = it->first;
             
-            for (unsigned int i = 0; i < 6; ++i)
+            for (unsigned long int i = 0; i < 6; ++i)
                 id[i] = static_cast<char>(std::stoul(idString.substr((2 * i), 2), nullptr, 16));
             
             BeaconState state = *it->second;
             
             time_t timeRaw;
             
-            time(&timeRaw);
+            std::time(&timeRaw);
             
-            struct tm timeInfo = *localtime(&timeRaw);
+            struct tm timeInfo = *std::localtime(&timeRaw);
             
             char time[20];
             
-            strftime(time, 20, "%F %T", &timeInfo);
+            std::strftime(time, 20, "%F %T", &timeInfo);
             
             unsigned char temperatureLength = sizeof(state.Temperature);
             unsigned char humidityLength = sizeof(state.Humidity);
@@ -160,7 +146,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             unsigned char buffer[bufferLength];
             
-            unsigned int currentIndex = 0;
+            unsigned long int currentIndex = 0;
             
             memcpy(buffer + currentIndex, static_cast<const void*>(&bufferLength), 1);
             
@@ -187,7 +173,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::cout << idString << "|" << state.Temperature << "|" << state.Humidity << "|" << static_cast<int>(state.Battery) << "|" << time << std::endl;
             
-            _networkControllerPtr->sendBuffer(buffer, bufferLength);
+//            _networkControllerPtr->sendBuffer(buffer, bufferLength);
             
 //            _gsmControllerPtr->sendBuffer(buffer, bufferLength);
             
@@ -259,7 +245,7 @@ void BaseController_RPi::listenforBLEDevices(void)
             if (metaPtr->subevent != EVT_LE_ADVERTISING_REPORT)
                 continue;
             
-            uint8_t reportCount = metaPtr->data[0];
+            unsigned char reportCount = metaPtr->data[0];
             
             void* offsetPtr = metaPtr->data + 1;
             
@@ -267,7 +253,7 @@ void BaseController_RPi::listenforBLEDevices(void)
             {    
                 le_advertising_info* infoPtr = static_cast<le_advertising_info*>(offsetPtr);
                 
-                uint8_t dataLength = infoPtr->length;
+                unsigned char dataLength = infoPtr->length;
 
                 if (dataLength == 0)
                     continue;
@@ -276,7 +262,7 @@ void BaseController_RPi::listenforBLEDevices(void)
                 
                 unsigned char manufacturerData[3];
                 
-                memcpy(manufacturerData, (infoPtr->data + 2), 3);
+                std::memcpy(static_cast<void*>(manufacturerData), static_cast<const void*>(infoPtr->data + 2), 3);
                 
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
@@ -286,7 +272,7 @@ void BaseController_RPi::listenforBLEDevices(void)
                     
                     unsigned char payloadData[12];
                     
-                    memcpy(payloadData, (infoPtr->data + 11), 12);
+                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 12);
                     
                     std::string payload = base64Decode(payloadData, 12);
                     
@@ -300,7 +286,7 @@ void BaseController_RPi::listenforBLEDevices(void)
                         
                         id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                         
-//                        int8_t rssi = infoPtr->data[infoPtr->length];
+//                        unsigned char rssi = infoPtr->data[infoPtr->length];
                         
                         short int temperature = getTemperature(payload.substr(0, 4));
                         unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
@@ -335,17 +321,17 @@ void BaseController_RPi::finalise(void)
     _isDone = true;
 }
 
-short BaseController_RPi::getTemperature(const std::string& temperatureStr)
+short int BaseController_RPi::getTemperature(const std::string temperatureString)
 {
-    short int temperature = (std::stoi(temperatureStr.substr(1, 3)) & 0xFFFF);
+    short int temperature = (std::stoi(temperatureString.substr(1, 3)) & 0xFFFF);
     
-    if (temperatureStr[0] == '-')
+    if (temperatureString[0] == '-')
         temperature *= -1;
     
     return temperature;
 }
 
-// The "isBase64" and "base64Decode" functions were based off of 3rd-party source code, distributed under the following license:
+// The "isBase64" and "base64Decode" functions were based off of 3rd-party source code (since altered), distributed under the following license:
 
 /* 
    base64.cpp and base64.h
@@ -374,7 +360,7 @@ short BaseController_RPi::getTemperature(const std::string& temperatureStr)
 
 */
 
-bool BaseController_RPi::isBase64(unsigned char inputChar)
+bool BaseController_RPi::isBase64(const unsigned char inputChar)
 {
     return (isalnum(inputChar) || (inputChar == '+') || (inputChar == '/'));
 }
@@ -386,9 +372,9 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     unsigned char temp1[4];
     unsigned char temp2[3];
     
-    int i = 0;
+    unsigned char i = 0;
     
-    int index = 0;
+    unsigned long int index = 0;
     
     // Handle data in sets of 4.
     
@@ -420,19 +406,80 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
 
     if (i > 0)
     {
-        for (int j = i; j < 4; ++j)
+        for (unsigned char j = i; j < 4; ++j)
             temp1[j] = 0;
 
-        for (int j = 0; j < 4; ++j)
+        for (unsigned char j = 0; j < 4; ++j)
             temp1[j] = _base64Chars.find(temp1[j]);
         
         temp2[0] = (temp1[0] << 2) + ((temp1[1] & 0x30) >> 4);
         temp2[1] = ((temp1[1] & 0xf) << 4) + ((temp1[2] & 0x3c) >> 2);
         temp2[2] = ((temp1[2] & 0x3) << 6) + temp1[3];
 
-        for (int j = 0; j < (i - 1); ++j)           
+        for (unsigned char j = 0; j < (i - 1); ++j)           
             decodedString += temp2[j];
     }
 
     return decodedString;
+}
+
+void BaseController_RPi::sendDataPeriodically_TEST(void)
+{
+    while (!_isDone)
+    {
+        for (unsigned long int i = 1000; i < 1100; ++i)
+        {
+            if (_isDone)
+                break;
+            
+            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
+            
+            time_t timeRaw;
+            
+            std::time(&timeRaw);
+            
+            struct tm timeInfo = *std::localtime(&timeRaw);
+            
+            char time[20];
+            
+            std::strftime(time, 20, "%F %T", &timeInfo);
+            
+            std::stringstream contentStream;
+    
+            contentStream << "{ \"BoltIdentifier\":\"" << i << "\" , \"HostID\":\"1\" , \"Battery\":100 , \"SensorLow\":12 , \"SensorHigh\":10 , \"DateTime\":\"" << time << "\" }";
+    
+            std::string contentString = contentStream.str();
+    
+            unsigned long int contentLength = contentString.length();
+    
+            unsigned char content[contentLength];
+    
+            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
+    
+            message.setContent(content, sizeof(content));
+    
+            unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+    
+            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+            
+            try
+            {
+                unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
+                
+                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+                
+                _networkControllerPtr->disconnectFromServer(sessionID);
+            }
+            
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::cout;
+            }
+            
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        
+        if (!_isDone)
+            std::this_thread::sleep_for(std::chrono::minutes(5));
+    }
 }

@@ -6,80 +6,56 @@
 
 #include "BaseController.h"
 
-BaseController::BaseController(void)
+BaseController::BaseController(const unsigned short int port)
 {
-    _networkControllerPtr = new NetworkController();
+    _networkControllerPtr = new NetworkController(port);
 
-    _clientCount = 0;
+    _sessionCount = 0;
 
     _isDone = false;
 
     _isReady = false;    
     _isWaitingCount = 0;
     _hasWokenCount = 0;
-
-    _clientIdNext = 0;
 }
 
 BaseController::~BaseController(void)
 {
-    std::unordered_map<unsigned int, Client*>::iterator it1;
+    {
+        std::map<unsigned long int, bool>::iterator it;
 
-    for (it1 = _clients.begin(); it1 != _clients.end(); ++it1)
-        delete it1->second;
+        for (it = _sessions.begin(); it != _sessions.end(); ++it)
+            _networkControllerPtr->closeSession(it->first);
+    }
 
-    std::unordered_map<unsigned int, std::thread*>::iterator it2;
+    {
+        std::unordered_map<unsigned long int, std::thread*>::iterator it;
 
-    for (it2 = _threads.begin(); it2 != _threads.end(); ++it2)
-        delete it2->second;
+        for (it = _threads.begin(); it != _threads.end(); ++it)
+            delete it->second;
+    }
 
     delete _networkControllerPtr;
 }
 
-void BaseController::monitorClients(void)
+void BaseController::monitorThreads(void)
 {
     std::unique_lock<std::mutex> lock(_mutex);
 
-    while (!_isDone)
+    std::unique_lock<std::mutex> lockSession(_mutexSession);
+
+    lockSession.unlock();
+
+    while (true)
     {
-        // Get new clients.
+        // Join all session-handler threads if done.
 
-        if (_networkControllerPtr->acceptNewClient(_clientIdNext))
+        if (_isDone)
         {
-            _clients.insert(std::pair<unsigned int, Client*>(_clientIdNext, new Client("NULL", "NULL")));
+            while (_isWaitingCount < _sessionCount) {}
 
-            _threads.insert(std::pair<unsigned int, std::thread*>(_clientIdNext, new std::thread(&BaseController::listenOnClient, this, _clientIdNext)));
-
-            ++_clientCount;
-
-            ++_clientIdNext;
-        }
-
-        if (_clientCount > 0)
-        {
-            // Reset the conditional wait barrier for all client-listener threads.
-
-            if ((_isReady) && (_hasWokenCount == _clientCount))
+            if (!_isReady)
             {
-                lock.lock();
-
-                _isReady = false;
-
-                _hasWokenCount = 0;
-            }
-
-            // Force all synchronised client-listener threads to wait.
-
-            if ((!_isReady) && (_isWaitingCount == _clientCount))
-            {
-                std::clock_t start = std::clock();
-
-                // All client-listener threads wait for 0.1 seconds (interruptible).
-
-                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 0.1)
-                    if (_isDone)
-                        break;
-
                 _isReady = true;
 
                 lock.unlock();
@@ -88,25 +64,126 @@ void BaseController::monitorClients(void)
 
                 _isWaitingCount = 0;
             }
+
+            std::unordered_map<unsigned long int, std::thread*>::const_iterator it;
+
+            for (it = _threads.begin(); it != _threads.end(); ++it)
+                it->second->join();
+
+            break;
+        }
+
+        // Get new sessions.
+
+        try
+        {
+            unsigned long int sessionID = _networkControllerPtr->getNewSession();
+
+            _threads.emplace(sessionID, new std::thread(&BaseController::handleSession, this, sessionID));
+
+            std::unique_lock<std::mutex> lock(_mutexSession);
+
+            _sessions.emplace(sessionID, true);
+
+            lock.unlock();
+
+            ++_sessionCount;
+        }
+
+        catch (const std::exception&)
+        {
+            // Do nothing.
+        }
+
+        if (_sessionCount == 0)
+            continue;
+
+        // Remove any inactive sessions.
+
+        lockSession.lock();
+
+        std::map<unsigned long int, bool>::const_iterator it;
+
+        for (it = _sessions.begin(); it != _sessions.end();)
+        {
+            if (!it->second)
+            {
+                std::thread* thread = _threads.at(it->first);
+
+                thread->join();
+
+                delete thread;
+
+                _threads.erase(it->first);
+
+                _networkControllerPtr->closeSession(it->first);
+
+                _sessions.erase(it++);
+
+                --_sessionCount;
+            }
+
+            else
+                ++it;
+        }
+
+        lockSession.unlock();
+
+        // Reset the conditional wait barrier for all session-handler threads.
+
+        if ((_isReady) && (_hasWokenCount == _sessionCount))
+        {
+            lock.lock();
+
+            _isReady = false;
+
+            _hasWokenCount = 0;
+        }
+
+        // Force all synchronised session-handler threads to wait.
+
+        if ((!_isReady) && (_isWaitingCount == _sessionCount))
+        {
+            std::clock_t start = std::clock();
+
+            // All session-handler threads wait for 0.1 seconds (interruptible).
+
+            while (((std::clock() - start) / CLOCKS_PER_SEC) < 0.1)
+                if (_isDone)
+                    break;
+
+            _isReady = true;
+
+            lock.unlock();
+
+            _cv.notify_all();
+
+            _isWaitingCount = 0;
         }
     }
 }
 
-void BaseController::listenOnClient(const unsigned int clientId)
+void BaseController::handleSession(const unsigned long int sessionID)
 {
     unsigned char buffer[SOCKET_BUFFER_SIZE_MAX];
+
+    std::clock_t start = std::clock();
 
     while (!_isDone)
     {
         // Get the data for this client.
 
-        int bufferLength = _networkControllerPtr->receiveBufferFromClient(clientId, buffer);
+        long int bufferLength = _networkControllerPtr->receiveBufferWithSession(sessionID, buffer, SOCKET_BUFFER_SIZE_MAX);
 
         if (bufferLength > 0)
         {
-            int i = 0;
+            start = std::clock();
 
-            while (i < bufferLength)
+            long int currentIndex = 0;
+
+            std::cout << "OK" << std::endl;
+
+            /*while (i < bufferLength)
             {
                 unsigned char messageLength;
 
@@ -162,7 +239,21 @@ void BaseController::listenOnClient(const unsigned int clientId)
 
                 std::cout << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
 
-                i += static_cast<int>(messageLength);
+                currentIndex += static_cast<int>(messageLength);
+            }*/
+        }
+
+        else
+        {
+            // Break if no data has been received within SESSION_TIMEOUT seconds.
+
+            if (((std::clock() - start) / CLOCKS_PER_SEC) > SESSION_TIMEOUT)
+            {
+                std::unique_lock<std::mutex> lock(_mutexSession);
+
+                _sessions.at(sessionID) = false;
+
+                break;
             }
         }
 
@@ -180,9 +271,4 @@ void BaseController::listenOnClient(const unsigned int clientId)
 void BaseController::finalise(void)
 {
     _isDone = true;
-
-    std::unordered_map<unsigned int, std::thread*>::iterator it;
-
-    for (it = _threads.begin(); it != _threads.end(); ++it)
-        it->second->join();
 }

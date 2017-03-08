@@ -147,7 +147,7 @@ void GSMController::initialiseGPRS(void)
     
         unsigned char response[255];
     
-        int responseLength = _uartControllerPtr->receiveBuffer(response, 255);
+        long int responseLength = _uartControllerPtr->receiveBuffer(response, 255);
     
         if (responseLength < 0)
         {
@@ -159,13 +159,13 @@ void GSMController::initialiseGPRS(void)
     }
 }
 
-void GSMController::connectToServer(std::string serverName, unsigned short int port)
+void GSMController::connectToServer(const std::string servername, const unsigned short int port)
 {
     // AT Command: AT+CIPSTART="TCP","serverName","port"
     
     std::stringstream commandStream;
     
-    commandStream << "AT+CIPSTART=\"TCP\",\"" << serverName << "\",\"" << port << "\"\r";
+    commandStream << "AT+CIPSTART=\"TCP\",\"" << servername << "\",\"" << port << "\"\r";
     
     std::string commandString = commandStream.str();
     
@@ -177,20 +177,42 @@ void GSMController::connectToServer(std::string serverName, unsigned short int p
     
     if (_uartControllerPtr->sendBuffer(command, commandLength) < 0)
     {
-        GSMExceptions::ServerConnectException e(serverName, port);
+        GSMExceptions::ServerConnectException e(servername, port);
         throw e;
     }
     
     if (!hasCorrectResponse(commandString.substr(0, commandLength - 1) + "OKCONNECT OK"))
     {
-        GSMExceptions::ServerConnectException e(serverName, port);
+        GSMExceptions::ServerConnectException e(servername, port);
         throw e;
     }
+    
+    _servername = servername;
+    _port = port;
     
     _isConnectedToServer = true;
 }
 
-void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
+void GSMController::disconnectFromServer(void) const
+{  
+    // AT Command: AT+CIPCLOSE
+    
+    unsigned char command[] = {"AT+CIPCLOSE\r"};
+    
+    if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
+    {
+        GSMExceptions::ServerDisconnectException e;
+        throw e;
+    }
+    
+    if (!hasCorrectResponse("AT+CIPCLOSECLOSE OK"))
+    {
+        GSMExceptions::ServerDisconnectException e;
+        throw e;
+    }
+}
+
+void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
     // AT Command: AT+CIPSEND
     
@@ -231,32 +253,11 @@ void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     }
 }
 
-//void GSMController::receiveBuffer(unsigned char* outputBuffer) {}
-
-void GSMController::disconnectFromServer(void)
-{  
-    // AT Command: AT+CIPCLOSE
-    
-    unsigned char command[] = {"AT+CIPCLOSE\r"};
-    
-    if (_uartControllerPtr->sendBuffer(command, sizeof(command) - 1) < 0)
-    {
-        GSMExceptions::ServerDisconnectException e;
-        throw e;
-    }
-    
-    if (!hasCorrectResponse("AT+CIPCLOSECLOSE OK"))
-    {
-        GSMExceptions::ServerDisconnectException e;
-        throw e;
-    }
-}
-
-std::string GSMController::getATResponse(unsigned char* inputBuffer, const unsigned long int bufferLength)
+std::string GSMController::getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
     std::stringstream responseStream;
     
-    for (int i = 0; i < bufferLength; ++i)
+    for (long int i = 0; i < bufferLength; ++i)
     {
         unsigned char currentChar = inputBuffer[i];
         
@@ -267,15 +268,15 @@ std::string GSMController::getATResponse(unsigned char* inputBuffer, const unsig
     return responseStream.str();
 }
 
-bool GSMController::hasCorrectResponse(std::string correctResponse)
+bool GSMController::hasCorrectResponse(const std::string correctResponse) const
 {
     unsigned char response[255];
     
     std::memset(response, 0, 255);
     
-    unsigned int responseLength = 0;
+    unsigned long int responseLength = 0;
     
-    unsigned int attempt = 0;
+    unsigned long int attempt = 0;
     
     while (getATResponse(response, responseLength) != correctResponse)
     {
@@ -286,7 +287,7 @@ bool GSMController::hasCorrectResponse(std::string correctResponse)
         
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
-        int receiveLength = _uartControllerPtr->receiveBuffer(response + responseLength, 255);
+        long int receiveLength = _uartControllerPtr->receiveBuffer(response + responseLength, 255);
     
         if (receiveLength < 0)
             return false;

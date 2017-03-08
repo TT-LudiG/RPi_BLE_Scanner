@@ -9,9 +9,9 @@
 class HTTPRequest_GET: public HTTPRequest
 {    
 public:
-    HTTPRequest_GET(std::string requestURI, std::string host): HTTPRequest("GET", requestURI, host) {}
+    HTTPRequest_GET(const std::string requestURI, const std::string host): HTTPRequest("GET", requestURI, host) {}
     
-    virtual unsigned long int serialise(unsigned char* outputBuffer, unsigned long int bufferLength)
+    virtual unsigned long int serialise(unsigned char* outputBuffer, const unsigned long int bufferLength) const
     {
         std::stringstream outputStream;
         

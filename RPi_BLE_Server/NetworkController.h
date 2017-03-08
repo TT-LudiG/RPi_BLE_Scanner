@@ -6,43 +6,36 @@
 
 #include <ws2tcpip.h>
 
-#define PORT "2226"
+// Set the max socket buffer size to the MTU (Maximum Transmission Unit).
 
-#define SOCKET_BUFFER_SIZE_MAX 1000000
+#define SOCKET_BUFFER_SIZE_MAX 1400
 
 class NetworkController
 {
 private:
-    std::string _port;
+    // Map of session IDs to socket handles.
 
-    // Gateway socket for new client connections.
+    std::unordered_map<unsigned long int, SOCKET> _sessions;
+
+    // Port to listen on for incoming TCP connections.
+
+    const unsigned short int _port;
+
+    // Gateway socket for incoming TCP connections.
 
     SOCKET _socketGateway;
 
-    // Dictionary to map an ID to each client socket.
-
-    std::unordered_map<unsigned int, SOCKET> _clientSockets;
+    unsigned long int _nextSessionID;
 
 public:
-    // Default constructor (error-prone).
+    NetworkController(const unsigned short int port);
+    ~NetworkController(void); 
 
-    NetworkController(const std::string port = PORT);
+    unsigned long int getNewSession(void);
+    void closeSession(const unsigned long int sessionID);
 
-    // Default destructor.
-
-    ~NetworkController(void);
-
-    // Method to attempt to accept a new client connection.
-
-    bool acceptNewClient(const unsigned int clientId);
-
-    // Method to attempt to send outgoing data to a client.
-
-    int sendBufferToClient(const unsigned int clientId, unsigned char* outputBuffer, const unsigned long int bufferLength);
-
-    // Method to attempt to receive incoming data from a client.
-
-    int receiveBufferFromClient(const unsigned int clientId, unsigned char* outputBuffer);
+    long int sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const;
+    long int receiveBufferWithSession(const unsigned long int sessionID, unsigned char* outputBuffer, const unsigned long int bufferLength) const;
 };
 
 #endif

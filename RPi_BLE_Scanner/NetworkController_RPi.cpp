@@ -1,6 +1,7 @@
 #include <cerrno>
 #include <cstring>
 
+#include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
 
@@ -9,40 +10,107 @@
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
 
-NetworkController_RPi::NetworkController_RPi(const std::string serverName, const unsigned short int port): _serverName(serverName), _port(port)
-{   
-	// Create the socket.
-	
-    _socket = socket(PF_INET, SOCK_STREAM, 0);
-	
-    if (_socket < 0)
+NetworkController_RPi::NetworkController_RPi(void): _nextSessionID(0) {}
+
+NetworkController_RPi::~NetworkController_RPi(void)
+{
+    std::unordered_map<unsigned long int, SessionInfo*>::const_iterator it;
+    
+    for (it = _sessions.begin(); it != _sessions.end(); ++it)
+        disconnectFromServer(it->first);
+}
+
+unsigned long int NetworkController_RPi::connectToServer(const std::string servername, const unsigned short int port)
+{ 
+    // Create the socket.
+    
+    long int socketHandle = socket(PF_INET, SOCK_STREAM, 0);
+    
+    if (socketHandle < 0)
     {	
-        NetworkExceptions_RPi::SocketCreateException e(std::string(std::strerror(errno)));
+        NetworkExceptions_RPi::SocketCreateException e(socketHandle, std::string(std::strerror(errno)));
         throw e;
     }
 	
     // Connect to the server.
+    
+    struct sockaddr_in socketAddress;
 	
-    initialiseSocketAddress(&_addressServer, _serverName.c_str(), _port);
+    initialiseSocketAddress(&socketAddress, servername.c_str(), port);
+    
+    // REINTERPRET_CAST!
 	
-    if (connect(_socket, (struct sockaddr*)&_addressServer, sizeof(_addressServer)) < 0)
-    {      
-        NetworkExceptions_RPi::ServerConnectException e(std::string(std::strerror(errno)));
+    if (connect(socketHandle, reinterpret_cast<const struct sockaddr*>(&socketAddress), sizeof(socketAddress)) < 0)
+    {
+        close(socketHandle);
+        
+        NetworkExceptions_RPi::ServerConnectException e(servername, port, std::string(std::strerror(errno)));
         throw e;
+    }
+    
+    _sessions.insert(std::pair<unsigned long int, SessionInfo*>(_nextSessionID, new SessionInfo(socketHandle, socketAddress)));
+    
+    return _nextSessionID++;
+}
+
+void NetworkController_RPi::disconnectFromServer(const unsigned long int sessionID)
+{
+    if (_sessions.count(sessionID) > 0)
+    {
+        close(_sessions.at(sessionID)->SocketHandle);
+        
+        delete _sessions.at(sessionID);
+        
+        _sessions.erase(sessionID);
     }
 }
 
-NetworkController_RPi::~NetworkController_RPi(void)
+long int NetworkController_RPi::sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
-    close(_socket);
+    int bytesCount = -1;
+    
+    if (_sessions.count(sessionID) > 0)
+    {
+        long int socketHandle = _sessions.at(sessionID)->SocketHandle;
+        
+        bytesCount = write(socketHandle, static_cast<const void*>(inputBuffer), bufferLength);
+        
+        if (bytesCount < 0)
+        {
+            NetworkExceptions_RPi::SocketWriteException e(socketHandle, std::string(std::strerror(errno)));
+            throw e;
+        }
+    }
+    
+    return bytesCount;
 }
 
-void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressOutput, const char* hostname, const unsigned short int port)
+long int NetworkController_RPi::receiveBufferWithSession(const unsigned long int sessionID, unsigned char* outputBuffer, const unsigned long int bufferLength) const
+{
+    int bytesCount = -1;
+
+    if (_sessions.count(sessionID) > 0)
+    {
+        long int socketHandle = _sessions.at(sessionID)->SocketHandle;
+        
+        bytesCount = read(socketHandle, static_cast<void*>(outputBuffer), bufferLength);
+	
+        if (bytesCount < 0)
+        {
+            NetworkExceptions_RPi::SocketReadException e(socketHandle, std::string(std::strerror(errno)));
+            throw e;
+        }
+    }
+    
+    return bytesCount;
+}
+
+void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* outputAddress, const char* hostname, const unsigned short int port)
 {
     struct hostent *hostInfo;
 
-    addressOutput->sin_family = AF_INET;	
-    addressOutput->sin_port = htons(port);
+    outputAddress->sin_family = AF_INET;	
+    outputAddress->sin_port = htons(port);
 	
     hostInfo = gethostbyname(hostname);
 	
@@ -54,35 +122,5 @@ void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* addressO
     
     // REINTERPRET_CAST!
 	
-    addressOutput->sin_addr = *reinterpret_cast<struct in_addr*>(hostInfo->h_addr);
-}
-
-int NetworkController_RPi::sendBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
-{
-    int bytesCount = -1;
-
-    bytesCount = write(_socket, static_cast<void*>(inputBuffer), bufferLength);
-	
-    if (bytesCount < 0)
-    {
-        NetworkExceptions_RPi::ServerWriteException e(std::string(std::strerror(errno)));
-        throw e;
-    }
-    
-    return bytesCount;
-}
-
-int NetworkController_RPi::receiveBuffer(unsigned char* inputBuffer, const unsigned long int bufferLength) const
-{
-    int bytesCount = -1;
-
-    bytesCount = read(_socket, static_cast<void*>(inputBuffer), bufferLength);
-	
-    if (bytesCount < 0)
-    {
-        NetworkExceptions_RPi::ServerWriteException e(std::string(std::strerror(errno)));
-        throw e;
-    }
-    
-    return bytesCount;
+    outputAddress->sin_addr = *reinterpret_cast<struct in_addr*>(hostInfo->h_addr);
 }

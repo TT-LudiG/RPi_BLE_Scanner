@@ -2,6 +2,7 @@
 #define NETWORKEXCEPTONS_H
 
 #include <exception>
+#include <string>
 
 namespace NetworkExceptions
 {
@@ -12,7 +13,7 @@ namespace NetworkExceptions
     public:
         virtual const char* what() const throw()
         {
-            return "EXCEPTION_NET_0: WinSock2 failed to initialise.";
+            return "EXCEPTION_NET_0: Failed to initialise WinSock2.";
         }
     };
 
@@ -56,7 +57,7 @@ namespace NetworkExceptions
     public:
         virtual const char* what() const throw()
         {
-            return "EXCEPTION_NET_4: Failed to set the the gateway socket as a TCP socket.";
+            return "EXCEPTION_NET_4: Failed to set the the gateway socket to TCP mode.";
         }
     };
 
@@ -67,7 +68,18 @@ namespace NetworkExceptions
     public:
         virtual const char* what() const throw()
         {
-            return "EXCEPTION_NET_5: Gateway socket listening failed.";
+            return "EXCEPTION_NET_5: Failed to listen on the gateway socket.";
+        }
+    };
+
+    // EXCEPTION_NET_6
+
+    class GetNewSessionException: public std::exception
+    {
+    public:
+        virtual const char* what() const throw()
+        {
+            return "EXCEPTION_NET_6: Failed to get a new TCP session.";
         }
     };
 }

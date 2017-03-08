@@ -2,6 +2,7 @@
 #define GSMEXCEPTIONS_H
 
 #include <exception>
+#include <string>
 
 namespace GSMExceptions
 {

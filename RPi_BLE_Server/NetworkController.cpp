@@ -3,22 +3,18 @@
 #include "NetworkExceptions.h"
 #include "NetworkController.h"
 
-// Default constructor (error-prone).
+// Default constructor.
 
-NetworkController::NetworkController(const std::string port): _port(port), _socketGateway(INVALID_SOCKET)
+NetworkController::NetworkController(const unsigned short int port): _port(port), _socketGateway(INVALID_SOCKET)
 {
-    // Address info for the server to listen to.
-
     struct addrinfo* addrinfoResult = nullptr;
     struct addrinfo addrinfoHints;
 
-    // Other declarations.
-
     WSADATA wsaData;
 
-    int result = -1;
+    long int result = -1;
 
-    // Initialise Winsock.
+    // Initialise Winsock2.
 
     result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -30,7 +26,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
     // Set the address information.
 
-    std::memset(&addrinfoHints, 0, sizeof(addrinfoHints));
+    std::memset(static_cast<void*>(&addrinfoHints), 0, sizeof(addrinfoHints));
 
     addrinfoHints.ai_family = AF_INET;
     addrinfoHints.ai_socktype = SOCK_STREAM;
@@ -39,7 +35,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
     // Resolve the server address and port.
 
-    result = getaddrinfo(NULL, _port.c_str(), &addrinfoHints, &addrinfoResult);
+    result = getaddrinfo(NULL, std::to_string(_port).c_str(), &addrinfoHints, &addrinfoResult);
 
     if (result != 0)
     {
@@ -49,7 +45,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
         throw e;
     }
 
-    // Create a SOCKET for connecting to the server.
+    // Get a gateway socket handle.
 
     _socketGateway = socket(addrinfoResult->ai_family, addrinfoResult->ai_socktype, addrinfoResult->ai_protocol);
 
@@ -63,7 +59,7 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
         throw e;
     }
 
-    // Set the mode of the socket to be nonblocking. (*IS THIS CORRECT FOR OUR SYSTEM!?)
+    // Set the gateway socket to be non-blocking mode.
 
     unsigned long int mode = 1;
 
@@ -79,9 +75,9 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
         throw e;
     }
 
-    // Set the gateway socket as a TCP socket.
+    // Set the gateway socket to TCP mode.
 
-    result = bind(_socketGateway, addrinfoResult->ai_addr, static_cast<int>(addrinfoResult->ai_addrlen));
+    result = bind(_socketGateway, addrinfoResult->ai_addr, static_cast<long int>(addrinfoResult->ai_addrlen));
 
     if (result == SOCKET_ERROR)
     {
@@ -118,65 +114,78 @@ NetworkController::NetworkController(const std::string port): _port(port), _sock
 
 NetworkController::~NetworkController(void)
 {
-    std::unordered_map<unsigned int, SOCKET>::iterator it;
+    std::unordered_map<unsigned long int, SOCKET>::const_iterator it;
 
-    for (it = _clientSockets.begin(); it != _clientSockets.end(); ++it)
+    for (it = _sessions.begin(); it != _sessions.end(); ++it)
         closesocket(it->second);
 }
 
-// Method to attempt to accept a new client connection.
+// Method to get a new TCP session.
 
-bool NetworkController::acceptNewClient(const unsigned int clientId)
+unsigned long int NetworkController::getNewSession(void)
 {
-    // If the client is waiting, accept the connection and save the socket.
+    SOCKET socketHandle = accept(_socketGateway, NULL, NULL);
 
-    SOCKET socketClient = accept(_socketGateway, NULL, NULL);
-
-    if (socketClient != INVALID_SOCKET)
+    if (socketHandle == INVALID_SOCKET)
     {
-        // Disable Nagle's Algorithm on the client's socket.
-
-        char value = 1;
-
-        setsockopt(socketClient, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
-
-        // Insert the new client into the session id table.
-
-        _clientSockets.insert(std::pair<unsigned int, SOCKET>(clientId, socketClient));
-
-        return true;
+        NetworkExceptions::GetNewSessionException e;
+        throw e;
     }
 
-    return false;
+    // Disable Nagle's Algorithm.
+
+    char value = 1;
+
+    setsockopt(socketHandle, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+
+    _sessions.emplace(_nextSessionID, socketHandle);
+
+    return _nextSessionID++;
 }
 
-// Method to attempt to send outgoing data to a client.
+// Method to close an existing TCP session.
 
-int NetworkController::sendBufferToClient(const unsigned int clientId, unsigned char* outputBuffer, const unsigned long int bufferLength)
+void NetworkController::closeSession(const unsigned long int sessionID)
 {
-    int result = -1;
-
-    if (_clientSockets.find(clientId) != _clientSockets.end())
+    if (_sessions.count(sessionID) > 0)
     {
-        SOCKET currentSocket = _clientSockets[clientId];
+        closesocket(sessionID);
 
-        result = send(currentSocket, reinterpret_cast<char*>(outputBuffer), bufferLength, 0);
+        _sessions.erase(sessionID);
+    }
+}
+
+// Method to send data, with a session.
+
+long int NetworkController::sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const
+{
+    long int result = -1;
+
+    if (_sessions.count(sessionID) > 0)
+    {
+        SOCKET currentSocket = _sessions.at(sessionID);
+
+        // REINTERPRET_CAST!
+
+        result = send(currentSocket, reinterpret_cast<const char*>(inputBuffer), bufferLength, 0);
     }
 
     return result;
 }
 
-// Method to attempt to receive incoming data from a client.
+// Method to receive data, with a session.
 
-int NetworkController::receiveBufferFromClient(const unsigned int clientId, unsigned char* outputBuffer)
+long int NetworkController::receiveBufferWithSession(const unsigned long int sessionID, unsigned char* outputBuffer, const unsigned long int bufferLength) const
 {
-    int result = -1;
+    long int result = -1;
 
-    if (_clientSockets.find(clientId) != _clientSockets.end())
+    if (_sessions.count(sessionID) > 0)
     {
-        SOCKET currentSocket = _clientSockets[clientId];
+        SOCKET currentSocket = _sessions.at(sessionID);
 
-        result = recv(currentSocket, reinterpret_cast<char*>(outputBuffer), SOCKET_BUFFER_SIZE_MAX, 0);
+        // REINTERPRET_CAST!
+
+        result = recv(currentSocket, reinterpret_cast<char*>(outputBuffer), bufferLength, 0);
     }
 
     return result;

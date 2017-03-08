@@ -10,14 +10,14 @@ private:
     
     std::string _addressLocal;
     
-    std::string _serverName;
+    std::string _servername;
     unsigned short int _port;
     
     bool _isConnectedToServer;
     
-    std::string getATResponse(unsigned char* inputBuffer, const unsigned long int bufferLength);
+    std::string getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength) const;
     
-    bool hasCorrectResponse(std::string correctResponse);
+    bool hasCorrectResponse(const std::string correctResponse) const;
     
 public:
     GSMController(void);
@@ -25,12 +25,9 @@ public:
     
     void initialiseGPRS(void);
     
-    void connectToServer(std::string serverName, unsigned short int port);
+    void connectToServer(const std::string servername, const unsigned short int port);    
+    void disconnectFromServer(void) const;
     
-    void sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength);
-    
-//    void receiveBuffer(unsigned char* outputBuffer);
-    
-    void disconnectFromServer(void);
+    void sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const;
 };
 #endif
