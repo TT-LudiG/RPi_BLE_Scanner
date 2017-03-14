@@ -193,7 +193,7 @@ void GSMController::connectToServer(const std::string servername, const unsigned
     _isConnectedToServer = true;
 }
 
-void GSMController::disconnectFromServer(void) const
+void GSMController::disconnectFromServer(void)
 {  
     // AT Command: AT+CIPCLOSE
     
@@ -212,7 +212,7 @@ void GSMController::disconnectFromServer(void) const
     }
 }
 
-void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
+void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
     // AT Command: AT+CIPSEND
     
@@ -253,7 +253,7 @@ void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     }
 }
 
-std::string GSMController::getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
+std::string GSMController::getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
     std::stringstream responseStream;
     
@@ -268,7 +268,7 @@ std::string GSMController::getATResponse(const unsigned char* inputBuffer, const
     return responseStream.str();
 }
 
-bool GSMController::hasCorrectResponse(const std::string correctResponse) const
+bool GSMController::hasCorrectResponse(const std::string correctResponse)
 {
     unsigned char response[255];
     

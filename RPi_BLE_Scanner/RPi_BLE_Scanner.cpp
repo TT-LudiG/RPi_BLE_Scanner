@@ -76,11 +76,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-//    std::thread listenerThread(&BaseController_RPi::listenforBLEDevices, baseControllerPtr); 
-//    std::thread senderThread(&BaseController_RPi::sendDataPeriodically, baseControllerPtr);  
-//    std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
-    
-    std::thread testThread(&BaseController_RPi::sendDataPeriodically_TEST, baseControllerPtr);
+    std::thread listenerThread(&BaseController_RPi::listenforBLEDevices, baseControllerPtr);
+    std::thread senderThread(&BaseController_RPi::sendDataPeriodically, baseControllerPtr);
+    std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
     
     std::cout << "Enter 'q' (quit), 'e' (exit) or 'c' (close) to end the program..." << std::endl;
     
@@ -93,11 +91,9 @@ int main(int argc, char* argv[])
     
     baseControllerPtr->finalise();
     
-//    listenerThread.join();    
-//    monitorThread.join();
-//    senderThread.join();
-    
-    testThread.join();
+    listenerThread.join();
+    monitorThread.join();
+    senderThread.join();
     
     if (baseControllerPtr != nullptr)
         delete baseControllerPtr;

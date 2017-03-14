@@ -3,11 +3,10 @@
 
 struct BeaconState
 {
-    short int Temperature;    
-    unsigned short int Humidity;
-    unsigned char Battery;
+    float Value;    
+    float Battery;
     
-    BeaconState(short int temperature, unsigned short int humidity, unsigned char battery): Temperature(temperature), Humidity(humidity), Battery(battery) {}
+    BeaconState(float value, float battery): Value(value), Battery(battery) {}
 };
 
 #endif

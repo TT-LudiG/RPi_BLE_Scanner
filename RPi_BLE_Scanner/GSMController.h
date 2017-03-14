@@ -15,9 +15,9 @@ private:
     
     bool _isConnectedToServer;
     
-    std::string getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength) const;
+    std::string getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
-    bool hasCorrectResponse(const std::string correctResponse) const;
+    bool hasCorrectResponse(const std::string correctResponse);
     
 public:
     GSMController(void);
@@ -25,9 +25,18 @@ public:
     
     void initialiseGPRS(void);
     
-    void connectToServer(const std::string servername, const unsigned short int port);    
-    void disconnectFromServer(void) const;
+    void initialiseFTP(const std::string servername, const std::string username, const std::string password);
     
-    void sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const;
+    void connectToServer(const std::string servername, const unsigned short int port);
+    
+    void connectToFTPServer(const std::string servername, const std::string username, const std::string password);
+    
+    void sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength);
+    
+//    void receiveBuffer(unsigned char* outputBuffer);
+    
+    void receiveFile(const std::string filename, const std::string filepath);
+    
+    void disconnectFromServer(void);
 };
 #endif

@@ -14,9 +14,9 @@
 class BaseController_RPi
 {
 private:
-    NetworkController_RPi* _networkControllerPtr = nullptr;    
-    BluetoothController* _bluetoothControllerPtr = nullptr;    
-    GSMController* _gsmControllerPtr = nullptr;
+    NetworkController_RPi* _networkControllerPtr;
+    BluetoothController* _bluetoothControllerPtr;
+    GSMController* _gsmControllerPtr;
     
     const std::string _servername;
     const unsigned short int _port;
@@ -36,9 +36,9 @@ private:
     
     static const std::string _base64Chars;
     
-    static short int getTemperature(const std::string temperatureString);
+//    static short int getTemperature(const std::string temperatureString);
     
-    static bool isBase64(const unsigned char inputChar);    
+    static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
 public:
@@ -52,8 +52,6 @@ public:
     void listenforBLEDevices(void);
     
     void finalise(void);
-    
-    void sendDataPeriodically_TEST(void);
 };
 
 #endif
