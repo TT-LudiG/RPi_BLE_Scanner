@@ -11,6 +11,9 @@
 #include "GSMController.h"
 #include "NetworkController_RPi.h"
 
+#define DELAY_SENDER_POST_IN_SEC 1
+#define DELAY_SENDER_LOOP_IN_SEC 5
+
 class BaseController_RPi
 {
 private:
@@ -19,7 +22,10 @@ private:
     GSMController* _gsmControllerPtr;
     
     const std::string _servername;
-    const unsigned short int _port;
+    const std::string _port;
+    
+    const std::string _conduitName;
+    unsigned long int _conduitNameLength;
 
     std::atomic<bool> _isDone;
 
@@ -36,22 +42,25 @@ private:
     
     static const std::string _base64Chars;
     
-//    static short int getTemperature(const std::string temperatureString);
+    static short int getTemperature(const std::string temperatureString);
     
     static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
+    static void logToFileWithDirectory(const std::exception& e, std::string directoryName);
+    
 public:
-    BaseController_RPi(const std::string servername, const unsigned short int port);    
+    BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName);
     ~BaseController_RPi(void);
     
     void monitorSenderThread(void);
     
     void sendDataPeriodically(void);
     
-    void listenforBLEDevices(void);
+    void listenForBLEDevices(void);
     
-    void finalise(void);
+    void setFinalised(void);
+    bool getFinalised(void);
 };
 
 #endif

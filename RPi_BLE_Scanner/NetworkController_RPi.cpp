@@ -1,11 +1,16 @@
 #include <cerrno>
 #include <cstring>
 
+#include <arpa/inet.h>
+
 #include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
 
 #include <sys/socket.h>
+#include <sys/types.h>
+
+#include <iostream>
 
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
@@ -20,35 +25,65 @@ NetworkController_RPi::~NetworkController_RPi(void)
         disconnectFromServer(it->first);
 }
 
-unsigned long int NetworkController_RPi::connectToServer(const std::string servername, const unsigned short int port)
-{ 
+unsigned long int NetworkController_RPi::connectToServer(const std::string servername, const std::string port)
+{
+    long int socketHandle = -1;
+    
+    // Initialise the socket address.
+    
+    struct sockaddr_in* socketAddress;
+    
+    struct addrinfo* result;
+    struct addrinfo hints;
+    
+    if ((getaddrinfo(servername.c_str(), port.c_str(), &hints, &result)) != 0)
+    {
+//        log_err("getaddrinfo failed: %s", gai_strerror(status));
+//        return -1;
+    }
+    
+    for (struct addrinfo* it = result; it != NULL; it = it->ai_next)
+    {
+        socketAddress = (struct sockaddr_in*)it->ai_addr;
+
+        // Print the address string.
+        
+        char addressString[INET6_ADDRSTRLEN];
+        
+        inet_ntop(it->ai_family, &(socketAddress->sin_addr), addressString, sizeof(addressString));
+        
+        std::cout << std::string(addressString) << std::endl;
+    }
+    
     // Create the socket.
     
-    long int socketHandle = socket(PF_INET, SOCK_STREAM, 0);
+    socketHandle = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    
+//    long int socketHandle = socket(PF_INET, SOCK_STREAM, 0);
     
     if (socketHandle < 0)
-    {	
+    {
         NetworkExceptions_RPi::SocketCreateException e(socketHandle, std::string(std::strerror(errno)));
         throw e;
     }
 	
     // Connect to the server.
     
-    struct sockaddr_in socketAddress;
-	
-    initialiseSocketAddress(&socketAddress, servername.c_str(), port);
+//    struct sockaddr_in socketAddress;
+//	
+//    initialiseSocketAddress(&socketAddress, servername.c_str(), port);
     
     // REINTERPRET_CAST!
 	
-    if (connect(socketHandle, reinterpret_cast<const struct sockaddr*>(&socketAddress), sizeof(socketAddress)) < 0)
-    {
+    if (connect(socketHandle, reinterpret_cast<const struct sockaddr*>(socketAddress), sizeof(*socketAddress)) < 0)
+    {       
         close(socketHandle);
         
-        NetworkExceptions_RPi::ServerConnectException e(servername, port, std::string(std::strerror(errno)));
-        throw e;
+//        NetworkExceptions_RPi::ServerConnectException e(servername, port, std::string(std::strerror(errno)));
+//        throw e;
     }
     
-    _sessions.insert(std::pair<unsigned long int, SessionInfo*>(_nextSessionID, new SessionInfo(socketHandle, socketAddress)));
+    _sessions.insert(std::pair<unsigned long int, SessionInfo*>(_nextSessionID, new SessionInfo(socketHandle, *socketAddress)));
     
     return _nextSessionID++;
 }
@@ -103,24 +138,4 @@ long int NetworkController_RPi::receiveBufferWithSession(const unsigned long int
     }
     
     return bytesCount;
-}
-
-void NetworkController_RPi::initialiseSocketAddress(struct sockaddr_in* outputAddress, const char* hostname, const unsigned short int port)
-{
-    struct hostent *hostInfo;
-
-    outputAddress->sin_family = AF_INET;	
-    outputAddress->sin_port = htons(port);
-	
-    hostInfo = gethostbyname(hostname);
-	
-    if (hostInfo == NULL)
-    {
-        NetworkExceptions_RPi::HostnameLookupException e((std::string(hostname)));
-        throw e;
-    }
-    
-    // REINTERPRET_CAST!
-	
-    outputAddress->sin_addr = *reinterpret_cast<struct in_addr*>(hostInfo->h_addr);
 }

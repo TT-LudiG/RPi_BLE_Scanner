@@ -20,7 +20,8 @@ void BluetoothController::openHCIDevice_Default(void)
 {
     if ((_hciDeviceHandle = hci_open_dev(hci_get_route(NULL))) < 0)
 	{
-    	BluetoothExceptions::HCIDeviceDefaultOpenException e(std::strerror(errno));
+    	BluetoothExceptions::HCIDeviceDefaultOpenException e(std::strerror(errno));    	
+    	throw e;
 	}
 }
 
@@ -50,6 +51,7 @@ void BluetoothController::startHCIScan_BLE(void)
         hci_close_dev(_hciDeviceHandle);
         
         BluetoothExceptions::HCIBLEScanParamSetException e(std::strerror(errno));
+        throw e;
     }
 
 	// Set HCI BLE event mask.
@@ -67,7 +69,8 @@ void BluetoothController::startHCIScan_BLE(void)
     {
         hci_close_dev(_hciDeviceHandle);
         
-        BluetoothExceptions::HCIBLEEventMaskSetException e(std::strerror(errno));
+        BluetoothExceptions::HCIBLEEventMaskSetException e(std::strerror(errno));        
+         throw e;
     }
 
 	// Enable HCI BLE scan.
@@ -85,7 +88,8 @@ void BluetoothController::startHCIScan_BLE(void)
     {
         hci_close_dev(_hciDeviceHandle);
         
-        BluetoothExceptions::HCIBLEScanEnableException e(std::strerror(errno));
+        BluetoothExceptions::HCIBLEScanEnableException e(std::strerror(errno));       
+        throw e;
     }
 
 	// Set HCI BLE socket options.
@@ -100,7 +104,8 @@ void BluetoothController::startHCIScan_BLE(void)
     {
         hci_close_dev(_hciDeviceHandle);
         
-        BluetoothExceptions::HCIBLESocketOptionsSetException e(std::strerror(errno));
+        BluetoothExceptions::HCIBLESocketOptionsSetException e(std::strerror(errno));       
+        throw e;
     }
 }
 
@@ -122,7 +127,8 @@ void BluetoothController::stopHCIScan_BLE(void)
     {
         hci_close_dev(_hciDeviceHandle);
         
-        BluetoothExceptions::HCIBLEScanDisableException e(std::strerror(errno));
+        BluetoothExceptions::HCIBLEScanDisableException e(std::strerror(errno));        
+        throw e;
     }
 }
 

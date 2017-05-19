@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 
+#include "MySQLController.h"
 #include "NetworkController.h"
 
 #define SESSION_TIMEOUT 1
@@ -15,6 +16,7 @@ class BaseController
 {
 private:
     NetworkController* _networkControllerPtr;
+    MySQLController* _mySQLControllerPtr;
 
     std::unordered_map<unsigned long int, std::thread*> _threads;
 

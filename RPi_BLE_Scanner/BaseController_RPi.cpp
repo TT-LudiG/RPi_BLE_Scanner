@@ -1,21 +1,57 @@
 #include <algorithm>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
-#include <iomanip>
-#include <sstream>
+#include <sys/stat.h>
 
 #include "BaseController_RPi.h"
 #include "HTTPRequest_POST.h"
 
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-BaseController_RPi::BaseController_RPi(const std::string servername, const unsigned short int port): _servername(servername), _port(port)
+BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName): _servername(servername), _port(port), _conduitName(conduitName)
 {
-    _networkControllerPtr = new NetworkController_RPi();
-    _bluetoothControllerPtr = new BluetoothController();  
-    _gsmControllerPtr = nullptr;
+    try
+    {
+        _networkControllerPtr = new NetworkController_RPi();
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/Network");
+        
+        throw e;
+    }
+    
+    try
+    {
+        _bluetoothControllerPtr = new BluetoothController();
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/Bluetooth");
+        
+        throw e;
+    }
+    
+    try
+    {
+        _gsmControllerPtr = nullptr;
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/GSM");
+        
+        throw e;
+    }
+    
+    _conduitNameLength = _conduitName.length();
     
     _isDone = false;
     
@@ -37,9 +73,25 @@ BaseController_RPi::~BaseController_RPi(void)
     if (_networkControllerPtr != nullptr)
         delete _networkControllerPtr;
     
-    _bluetoothControllerPtr->stopHCIScan_BLE();
+    try
+    {
+        _bluetoothControllerPtr->stopHCIScan_BLE();
+    }
     
-    _bluetoothControllerPtr->closeHCIDevice();
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/Bluetooth");
+    }
+    
+    try
+    {
+        _bluetoothControllerPtr->closeHCIDevice();
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/Bluetooth");
+    }
     
     if (_bluetoothControllerPtr != nullptr)
         delete _bluetoothControllerPtr;
@@ -67,26 +119,26 @@ void BaseController_RPi::monitorSenderThread(void)
 
         if ((!_isReady) && (_isWaiting))
         {
-            std::clock_t start = std::clock();
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
             
             if (_loopsCount > 0)
-            {
-                // All client-listener threads wait for 1 seconds (interruptible).
-
-                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 1.0)
+            {            
+                // All client-listener threads wait for DELAY_SENDER_POST_IN_SEC seconds (interruptible).
+                
+                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < DELAY_SENDER_POST_IN_SEC)
                     if (_isDone)
                         break;
             }
             
             else
-            {
-                // All client-listener threads wait for 5 seconds (interruptible).
-
-                while (((std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC)) < 5.0)
+            {             
+                // All client-listener threads wait for DELAY_SENDER_LOOP_IN_SEC seconds (interruptible).
+                
+                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < DELAY_SENDER_LOOP_IN_SEC)                
                     if (_isDone)
                         break;
             }
-
+            
             _isReady = true;
 
             lock.unlock();
@@ -115,7 +167,37 @@ void BaseController_RPi::sendDataPeriodically(void)
             if (_isDone)
                 return;
             
-            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
+//            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
+//            
+//            time_t timeRaw;
+//            
+//            std::time(&timeRaw);
+//            
+//            struct tm timeInfo = *std::localtime(&timeRaw);
+//            
+//            char time[20];
+//            
+//            std::strftime(time, 20, "%F %T", &timeInfo);
+//            
+//            std::stringstream contentStream;
+//    
+//            contentStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << time << "\"}";
+//    
+//            std::string contentString = contentStream.str();
+//            
+//            std::cout << contentString << std::endl;
+//    
+//            unsigned long int contentLength = contentString.length();
+//    
+//            unsigned char content[contentLength];
+//    
+//            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
+//    
+//            message.setContent(content, sizeof(content));
+//    
+//            unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+//
+//            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
             
             time_t timeRaw;
             
@@ -127,36 +209,42 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
-            std::stringstream contentStream;
-    
-            contentStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << time << "\"}";
-    
-            std::string contentString = contentStream.str();
-    
-            unsigned long int contentLength = contentString.length();
-    
-            unsigned char content[contentLength];
-    
-            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
-    
-            message.setContent(content, sizeof(content));
-    
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-    
-            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+
+            unsigned long int messageLength = _conduitNameLength + 35;
+            
+            buffer[0] = messageLength;
+            buffer[7] = 2;
+            buffer[10] = 2;
+            buffer[13] = 1;
+            buffer[35] = _conduitNameLength;
+            
+            for (unsigned char i = 0; i < 6; ++i)
+                buffer[i + 1] = static_cast<unsigned char>(std::stoul(it->first.substr(i * 2, 2), nullptr, 16));
+
+            std::memcpy(static_cast<void*>(buffer + 8), static_cast<const void*>(&it->second->Temperature), 2);
+            std::memcpy(static_cast<void*>(buffer + 11), static_cast<const void*>(&it->second->Humidity), 2);
+            std::memcpy(static_cast<void*>(buffer + 14), static_cast<const void*>(&it->second->Battery), 1);
+            std::memcpy(static_cast<void*>(buffer + 15), static_cast<const void*>(time), 20);
+            
+            std::memcpy(static_cast<void*>(buffer + 36), static_cast<const void*>(_conduitName.c_str()), _conduitNameLength);
+            
+            std::cout << it->first << "|" << it->second->Temperature << "|" << it->second->Humidity << "|" << it->second->Battery << std::endl;
             
             try
             {              
                 unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
                 
-                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+//                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+                
+                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, messageLength + 1);
                 
                 _networkControllerPtr->disconnectFromServer(sessionID);
             }
             
             catch (const std::exception& e)
             {
-                std::cerr << e.what() << std::endl;
+                logToFileWithDirectory(e, "Logs/Network");
             }
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -192,9 +280,17 @@ void BaseController_RPi::sendDataPeriodically(void)
     }
 }
 
-void BaseController_RPi::listenforBLEDevices(void)
-{	
-    _bluetoothControllerPtr->startHCIScan_BLE();
+void BaseController_RPi::listenForBLEDevices(void)
+{
+    try
+    {
+        _bluetoothControllerPtr->startHCIScan_BLE();
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithDirectory(e, "Logs/Bluetooth");
+    }
 	
     while (!_isDone)
     {
@@ -206,14 +302,7 @@ void BaseController_RPi::listenforBLEDevices(void)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
             else
-            {
-                if (errno == EINTR)
-                    std::cerr << "Interrupted system call." << std::endl;
-                
-                std::cerr << "Scanning error." << std::endl;
-                
-                break;
-            }
+                _isDone = true;
         }
 
         else
@@ -246,17 +335,27 @@ void BaseController_RPi::listenforBLEDevices(void)
                 
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
-                if (manufacturer == "GMS")
+                if (manufacturer == "INO")
+//                if (manufacturer == "GMS")
                 {                   
                     // Base64-encoded data is found from indices 10-24 (length: 15).
                     
-                    unsigned char payloadData[15];
+//                    unsigned char payloadData[15];
+//                    
+//                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 15);
+//                    
+//                    std::string payload = base64Decode(payloadData, 15);
                     
-                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 15);
+                    // Base64-encoded data is found from indices 10-21 (length: 12).
                     
-                    std::string payload = base64Decode(payloadData, 15);
+                    unsigned char payloadData[12];
                     
-                    if (payload.size() == 10)
+                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 12);
+                    
+                    std::string payload = base64Decode(payloadData, 12);
+                    
+                    if (payload.size() == 9)
+//                    if (payload.size() == 10)
                     {
                         char idBuffer[6];
                         
@@ -266,24 +365,30 @@ void BaseController_RPi::listenforBLEDevices(void)
                         
                         id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                         
-                        float value = stof(payload.substr(0, 5));
-                        float battery = stof(payload.substr(5, 5));
+//                        float value = stof(payload.substr(0, 5));
+//                        float battery = stof(payload.substr(5, 5));
                         
-//                        short int temperature = getTemperature(payload.substr(0, 4));
-//                        unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
-//                        unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
+                        short int temperature = getTemperature(payload.substr(0, 4));
+                        unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
+                        unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
                         
                         if (_beacons.count(id) == 0)
                         {
-                            _beacons.emplace(id, new BeaconState(value, battery));
+                            _beacons.emplace(id, new BeaconState(temperature, humidity, battery));
+                            
+//                            _beacons.emplace(id, new BeaconState(value, battery));
                             
                             ++_beaconsCount;
                         }
                         
                         else
                         {
-                            _beacons.at(id)->Value = value;
+                            _beacons.at(id)->Temperature = temperature;
+                            _beacons.at(id)->Humidity = humidity;
                             _beacons.at(id)->Battery = battery;
+                            
+//                            _beacons.at(id)->Value = value;
+//                            _beacons.at(id)->Battery = battery;
                         }
                     }
                 }
@@ -296,20 +401,25 @@ void BaseController_RPi::listenforBLEDevices(void)
     _bluetoothControllerPtr->stopHCIScan_BLE();
 }
 
-void BaseController_RPi::finalise(void)
+void BaseController_RPi::setFinalised(void)
 {
     _isDone = true;
 }
 
-//short int BaseController_RPi::getTemperature(const std::string temperatureString)
-//{
-//    short int temperature = (std::stoi(temperatureString.substr(1, 3)) & 0xFFFF);
-//    
-//    if (temperatureString[0] == '-')
-//        temperature *= -1;
-//    
-//    return temperature;
-//}
+bool BaseController_RPi::getFinalised(void)
+{
+    return _isDone;
+}
+
+short int BaseController_RPi::getTemperature(const std::string temperatureString)
+{
+    short int temperature = (std::stoi(temperatureString.substr(1, 3)) & 0xFFFF);
+    
+    if (temperatureString[0] == '-')
+        temperature *= -1;
+    
+    return temperature;
+}
 
 // The "isBase64" and "base64Decode" functions were based off of 3rd-party source code (since altered), distributed under the following license:
 
@@ -401,4 +511,32 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     }
 
     return decodedString;
+}
+
+void BaseController_RPi::logToFileWithDirectory(const std::exception& e, std::string directoryName)
+{
+    umask(0);    
+    mkdir("Logs", 0777);
+    mkdir(directoryName.c_str(), 0777);
+    
+    time_t timeRaw;
+            
+    std::time(&timeRaw);
+            
+    struct tm timeInfo = *std::localtime(&timeRaw);
+            
+    char time[20];
+            
+    std::strftime(time, 20, "%F_%T", &timeInfo);
+        
+    std::stringstream fileLogNameStream;
+        
+    fileLogNameStream << directoryName << "/" << time << ".log";
+        
+    std::ofstream fileLog(fileLogNameStream.str());
+    
+    if (fileLog.is_open())       
+        fileLog << e.what() << std::endl;
+        
+    fileLog.close();
 }

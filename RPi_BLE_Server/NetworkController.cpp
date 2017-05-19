@@ -149,7 +149,9 @@ void NetworkController::closeSession(const unsigned long int sessionID)
 {
     if (_sessions.count(sessionID) > 0)
     {
-        closesocket(sessionID);
+        SOCKET currentSocket = _sessions.at(sessionID);
+
+        closesocket(currentSocket);
 
         _sessions.erase(sessionID);
     }

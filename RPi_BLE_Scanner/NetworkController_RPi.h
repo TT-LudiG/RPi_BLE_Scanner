@@ -12,13 +12,11 @@ private:
     
     unsigned long int _nextSessionID;
 	
-    static void initialiseSocketAddress(struct sockaddr_in* outputAddress, const char* hostname, const unsigned short int port);
-	
 public:
-    NetworkController_RPi(void);    
+    NetworkController_RPi(void);
     ~NetworkController_RPi(void);
     
-    unsigned long int connectToServer(const std::string servername, const unsigned short int port);    
+    unsigned long int connectToServer(const std::string servername, const std::string port);
     void disconnectFromServer(const unsigned long int sessionID);
 	
     long int sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const;    

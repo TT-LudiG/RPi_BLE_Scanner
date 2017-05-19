@@ -4,16 +4,25 @@
 
 #include "BaseController_RPi.h"
 
+//#define SERVERNAME "41.185.23.172"
+//#define PORT 2226
+
 //#define SERVERNAME "thermotrack.dyndns.org"
 //#define PORT 2226
 
 #define SERVERNAME "whizzdev.dyndns.org"
-#define PORT 9062
+#define PORT "9062"
+
+#define CONDUITNAME "RPi-Dev"
 
 int main(int argc, char* argv[])
 {
+//    std::this_thread::sleep_for(std::chrono::minutes(1));
+    
     std::string servername = SERVERNAME;
-    unsigned short int port = PORT;
+    std::string port = PORT;
+    
+    std::string conduitName = CONDUITNAME;
     
     std::string currentParam;
     
@@ -48,12 +57,25 @@ int main(int argc, char* argv[])
             {             
                 try
                 {
-                    port = static_cast<unsigned short int>(std::stoul(argv[i + 1]));
+                    port = std::string(argv[i + 1]);
                 }
                 
                 catch (...)
                 {
                     port = PORT;
+                }
+            }
+            
+            else if (currentParam == "-i")
+            {             
+                try
+                {
+                    conduitName = std::string(argv[i + 1]);
+                }
+                
+                catch (...)
+                {
+                    conduitName = CONDUITNAME;
                 }
             }
         }
@@ -63,20 +85,18 @@ int main(int argc, char* argv[])
     
     try
     {
-        baseControllerPtr = new BaseController_RPi(servername, port);
+        baseControllerPtr = new BaseController_RPi(servername, port, conduitName);
     }
     
     catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-        
+    {        
         if (baseControllerPtr != nullptr)
             delete baseControllerPtr;
         
         return 1;
     }
-    
-    std::thread listenerThread(&BaseController_RPi::listenforBLEDevices, baseControllerPtr);
+
+    std::thread listenerThread(&BaseController_RPi::listenForBLEDevices, baseControllerPtr);
     std::thread senderThread(&BaseController_RPi::sendDataPeriodically, baseControllerPtr);
     std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
     
@@ -86,14 +106,14 @@ int main(int argc, char* argv[])
     
     std::getline(std::cin, inputLine);
     
-    while ((inputLine != "q") && (inputLine != "e") && (inputLine != "c"))
+    while ((!baseControllerPtr->getFinalised()) && (inputLine != "q") && (inputLine != "e") && (inputLine != "c"))
         std::getline(std::cin, inputLine);
     
-    baseControllerPtr->finalise();
-    
-    listenerThread.join();
+    baseControllerPtr->setFinalised();
+
     monitorThread.join();
     senderThread.join();
+    listenerThread.join();
     
     if (baseControllerPtr != nullptr)
         delete baseControllerPtr;
