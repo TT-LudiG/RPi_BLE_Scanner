@@ -171,37 +171,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             if (_isDone)
                 return;
             
-//            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
-//            
-//            time_t timeRaw;
-//            
-//            std::time(&timeRaw);
-//            
-//            struct tm timeInfo = *std::localtime(&timeRaw);
-//            
-//            char time[20];
-//            
-//            std::strftime(time, 20, "%F %T", &timeInfo);
-//            
-//            std::stringstream contentStream;
-//    
-//            contentStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << time << "\"}";
-//    
-//            std::string contentString = contentStream.str();
-//            
-//            std::cout << contentString << std::endl;
-//    
-//            unsigned long int contentLength = contentString.length();
-//    
-//            unsigned char content[contentLength];
-//    
-//            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
-//    
-//            message.setContent(content, sizeof(content));
-//    
-//            unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-//
-//            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
             
             time_t timeRaw;
             
@@ -213,35 +183,31 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
+            std::stringstream contentStream;
+    
+            contentStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << time << "\"}";
+    
+            std::string contentString = contentStream.str();
+            
+            std::cout << contentString << std::endl;
+    
+            unsigned long int contentLength = contentString.length();
+    
+            unsigned char content[contentLength];
+    
+            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
+    
+            message.setContent(content, sizeof(content));
+    
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
 
-            unsigned long int messageLength = _conduitNameLength + 35;
-            
-            buffer[0] = messageLength;
-            buffer[7] = 2;
-            buffer[10] = 2;
-            buffer[13] = 1;
-            buffer[35] = _conduitNameLength;
-            
-            for (unsigned char i = 0; i < 6; ++i)
-                buffer[i + 1] = static_cast<unsigned char>(std::stoul(it->first.substr(i * 2, 2), nullptr, 16));
-
-            std::memcpy(static_cast<void*>(buffer + 8), static_cast<const void*>(&it->second->Temperature), 2);
-            std::memcpy(static_cast<void*>(buffer + 11), static_cast<const void*>(&it->second->Humidity), 2);
-            std::memcpy(static_cast<void*>(buffer + 14), static_cast<const void*>(&it->second->Battery), 1);
-            std::memcpy(static_cast<void*>(buffer + 15), static_cast<const void*>(time), 20);
-            
-            std::memcpy(static_cast<void*>(buffer + 36), static_cast<const void*>(_conduitName.c_str()), _conduitNameLength);
-            
-            std::cout << it->first << "|" << it->second->Temperature << "|" << it->second->Humidity << "|" << it->second->Battery << std::endl;
+            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
             
             try
             {              
                 unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
                 
-//                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
-                
-                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, messageLength + 1);
+                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
                 
                 _networkControllerPtr->disconnectFromServer(sessionID);
             }

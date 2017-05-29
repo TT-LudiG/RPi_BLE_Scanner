@@ -10,8 +10,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <iostream>
-
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
 
@@ -36,30 +34,20 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     struct addrinfo* result;
     struct addrinfo hints;
     
-    if ((getaddrinfo(servername.c_str(), port.c_str(), &hints, &result)) != 0)
+    unsigned long int status = getaddrinfo(servername.c_str(), port.c_str(), &hints, &result);
+    
+    if (status != 0)
     {
-//        log_err("getaddrinfo failed: %s", gai_strerror(status));
-//        return -1;
+        NetworkExceptions_RPi::ServerLookupException e(servername, std::string(gai_strerror(status)));
+        throw e;
     }
     
     for (struct addrinfo* it = result; it != NULL; it = it->ai_next)
-    {
         socketAddress = (struct sockaddr_in*)it->ai_addr;
-
-        // Print the address string.
-        
-        char addressString[INET6_ADDRSTRLEN];
-        
-        inet_ntop(it->ai_family, &(socketAddress->sin_addr), addressString, sizeof(addressString));
-        
-        std::cout << std::string(addressString) << std::endl;
-    }
     
     // Create the socket.
     
     socketHandle = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    
-//    long int socketHandle = socket(PF_INET, SOCK_STREAM, 0);
     
     if (socketHandle < 0)
     {
@@ -69,18 +57,14 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
 	
     // Connect to the server.
     
-//    struct sockaddr_in socketAddress;
-//	
-//    initialiseSocketAddress(&socketAddress, servername.c_str(), port);
-    
     // REINTERPRET_CAST!
 	
     if (connect(socketHandle, reinterpret_cast<const struct sockaddr*>(socketAddress), sizeof(*socketAddress)) < 0)
     {       
         close(socketHandle);
         
-//        NetworkExceptions_RPi::ServerConnectException e(servername, port, std::string(std::strerror(errno)));
-//        throw e;
+        NetworkExceptions_RPi::ServerConnectException e(servername, port, std::string(std::strerror(errno)));
+        throw e;
     }
     
     _sessions.insert(std::pair<unsigned long int, SessionInfo*>(_nextSessionID, new SessionInfo(socketHandle, *socketAddress)));
