@@ -11,11 +11,13 @@
 #include "BaseController_RPi.h"
 #include "HTTPRequest_POST.h"
 
-#include "NetworkExceptions_RPi.h"
-
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName): _servername(servername), _port(port), _conduitName(conduitName)
+BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec):
+    _servername(servername),
+    _port(port),
+    _conduitName(conduitName),
+    _delaySenderLoopInSec(delaySenderLoopInSec)
 {   
     try
     {
@@ -134,9 +136,9 @@ void BaseController_RPi::monitorSenderThread(void)
             
             else
             {             
-                // All client-listener threads wait for DELAY_SENDER_LOOP_IN_SEC seconds (interruptible).
+                // All client-listener threads wait for _delaySenderLoopInSec seconds (interruptible).
                 
-                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < DELAY_SENDER_LOOP_IN_SEC)                
+                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < _delaySenderLoopInSec)
                     if (_isDone)
                         break;
             }

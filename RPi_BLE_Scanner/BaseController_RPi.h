@@ -12,7 +12,6 @@
 #include "NetworkController_RPi.h"
 
 #define DELAY_SENDER_POST_IN_SEC 1
-#define DELAY_SENDER_LOOP_IN_SEC 5
 
 class BaseController_RPi
 {
@@ -26,6 +25,8 @@ private:
     
     const std::string _conduitName;
     unsigned long int _conduitNameLength;
+    
+    const unsigned long int _delaySenderLoopInSec;
 
     std::atomic<bool> _isDone;
 
@@ -50,7 +51,7 @@ private:
     static void logToFileWithSubdirectory(const std::exception& e, std::string subdirectoryName);
     
 public:
-    BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName);
+    BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec);
     ~BaseController_RPi(void);
     
     void monitorSenderThread(void);

@@ -4,16 +4,12 @@
 
 #include "BaseController_RPi.h"
 
-//#define SERVERNAME "41.185.23.172"
-//#define PORT 2226
-
-//#define SERVERNAME "thermotrack.dyndns.org"
-//#define PORT 2226
-
 #define SERVERNAME "whizzdev.dyndns.org"
 #define PORT "9062"
 
 #define CONDUITNAME "RPi-Dev"
+
+#define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
 {
@@ -23,6 +19,8 @@ int main(int argc, char* argv[])
     std::string port = PORT;
     
     std::string conduitName = CONDUITNAME;
+    
+    unsigned long int delaySenderLoopInSec = DELAY_SENDER_LOOP_IN_SEC;
     
     std::string currentParam;
     
@@ -78,6 +76,19 @@ int main(int argc, char* argv[])
                     conduitName = CONDUITNAME;
                 }
             }
+            
+            else if (currentParam == "-t")
+            {             
+                try
+                {
+                    delaySenderLoopInSec = std::stoul(std::string(argv[i + 1]));
+                }
+                
+                catch (...)
+                {
+                    delaySenderLoopInSec = DELAY_SENDER_LOOP_IN_SEC;
+                }
+            }
         }
     }
     
@@ -85,7 +96,7 @@ int main(int argc, char* argv[])
     
     try
     {
-        baseControllerPtr = new BaseController_RPi(servername, port, conduitName);
+        baseControllerPtr = new BaseController_RPi(servername, port, conduitName, delaySenderLoopInSec);
     }
     
     catch (const std::exception& e)
