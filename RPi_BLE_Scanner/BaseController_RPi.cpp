@@ -171,38 +171,6 @@ void BaseController_RPi::sendDataPeriodically(void)
             if (_isDone)
                 return;
             
-//            HTTPRequest_POST message("/api/v1/SetRecord", "127.0.0.1");
-//            
-//            time_t timeRaw;
-//            
-//            std::time(&timeRaw);
-//            
-//            struct tm timeInfo = *std::localtime(&timeRaw);
-//            
-//            char time[20];
-//            
-//            std::strftime(time, 20, "%F %T", &timeInfo);
-//            
-//            std::stringstream contentStream;
-//    
-//            contentStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << time << "\"}";
-//    
-//            std::string contentString = contentStream.str();
-//            
-//            std::cout << contentString << std::endl;
-//    
-//            unsigned long int contentLength = contentString.length();
-//    
-//            unsigned char content[contentLength];
-//    
-//            std::memcpy(static_cast<void*>(content), static_cast<const void*>(contentString.c_str()), contentLength);
-//    
-//            message.setContent(content, sizeof(content));
-//    
-//            unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-//
-//            unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
-            
             time_t timeRaw;
             
             std::time(&timeRaw);
@@ -238,8 +206,6 @@ void BaseController_RPi::sendDataPeriodically(void)
             try
             {              
                 unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
-                
-//                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
                 
                 _networkControllerPtr->sendBufferWithSession(sessionID, buffer, messageLength + 1);
                 
@@ -340,16 +306,7 @@ void BaseController_RPi::listenForBLEDevices(void)
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
                 if (manufacturer == "INO")
-//                if (manufacturer == "GMS")
-                {                   
-                    // Base64-encoded data is found from indices 10-24 (length: 15).
-                    
-//                    unsigned char payloadData[15];
-//                    
-//                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 15);
-//                    
-//                    std::string payload = base64Decode(payloadData, 15);
-                    
+                {       
                     // Base64-encoded data is found from indices 10-21 (length: 12).
                     
                     unsigned char payloadData[12];
@@ -359,7 +316,6 @@ void BaseController_RPi::listenForBLEDevices(void)
                     std::string payload = base64Decode(payloadData, 12);
                     
                     if (payload.size() == 9)
-//                    if (payload.size() == 10)
                     {
                         char idBuffer[6];
                         
@@ -369,9 +325,6 @@ void BaseController_RPi::listenForBLEDevices(void)
                         
                         id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                         
-//                        float value = stof(payload.substr(0, 5));
-//                        float battery = stof(payload.substr(5, 5));
-                        
                         short int temperature = getTemperature(payload.substr(0, 4));
                         unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
                         unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
@@ -379,8 +332,6 @@ void BaseController_RPi::listenForBLEDevices(void)
                         if (_beacons.count(id) == 0)
                         {
                             _beacons.emplace(id, new BeaconState(temperature, humidity, battery));
-                            
-//                            _beacons.emplace(id, new BeaconState(value, battery));
                             
                             ++_beaconsCount;
                         }
@@ -390,9 +341,6 @@ void BaseController_RPi::listenForBLEDevices(void)
                             _beacons.at(id)->Temperature = temperature;
                             _beacons.at(id)->Humidity = humidity;
                             _beacons.at(id)->Battery = battery;
-                            
-//                            _beacons.at(id)->Value = value;
-//                            _beacons.at(id)->Battery = battery;
                         }
                     }
                 }
