@@ -17,7 +17,7 @@
 
 int main(int argc, char* argv[])
 {
-//    std::this_thread::sleep_for(std::chrono::minutes(1));
+    std::this_thread::sleep_for(std::chrono::minutes(1));
     
     std::string servername = SERVERNAME;
     std::string port = PORT;

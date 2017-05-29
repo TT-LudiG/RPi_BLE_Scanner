@@ -47,7 +47,7 @@ private:
     static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
-    static void logToFileWithDirectory(const std::exception& e, std::string directoryName);
+    static void logToFileWithSubdirectory(const std::exception& e, std::string subdirectoryName);
     
 public:
     BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName);

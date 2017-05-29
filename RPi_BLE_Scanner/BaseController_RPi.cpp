@@ -11,10 +11,12 @@
 #include "BaseController_RPi.h"
 #include "HTTPRequest_POST.h"
 
+#include "NetworkExceptions_RPi.h"
+
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName): _servername(servername), _port(port), _conduitName(conduitName)
-{
+{   
     try
     {
         _networkControllerPtr = new NetworkController_RPi();
@@ -22,7 +24,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/Network");
+        logToFileWithSubdirectory(e, "Network");
         
         throw e;
     }
@@ -34,7 +36,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/Bluetooth");
+        logToFileWithSubdirectory(e, "Bluetooth");
         
         throw e;
     }
@@ -46,7 +48,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/GSM");
+        logToFileWithSubdirectory(e, "GSM");
         
         throw e;
     }
@@ -80,7 +82,7 @@ BaseController_RPi::~BaseController_RPi(void)
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/Bluetooth");
+        logToFileWithSubdirectory(e, "Bluetooth");
     }
     
     try
@@ -90,7 +92,7 @@ BaseController_RPi::~BaseController_RPi(void)
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/Bluetooth");
+        logToFileWithSubdirectory(e, "Bluetooth");
     }
     
     if (_bluetoothControllerPtr != nullptr)
@@ -244,7 +246,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             catch (const std::exception& e)
             {
-                logToFileWithDirectory(e, "Logs/Network");
+                logToFileWithSubdirectory(e, "Network");
             }
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -289,7 +291,7 @@ void BaseController_RPi::listenForBLEDevices(void)
     
     catch (const std::exception& e)
     {
-        logToFileWithDirectory(e, "Logs/Bluetooth");
+        logToFileWithSubdirectory(e, "Bluetooth");
     }
 	
     while (!_isDone)
@@ -513,11 +515,16 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     return decodedString;
 }
 
-void BaseController_RPi::logToFileWithDirectory(const std::exception& e, std::string directoryName)
+void BaseController_RPi::logToFileWithSubdirectory(const std::exception& e, std::string subdirectoryName)
 {
-    umask(0);    
-    mkdir("Logs", 0777);
-    mkdir(directoryName.c_str(), 0777);
+    std::stringstream fileLogNameStream;
+        
+    fileLogNameStream << "//home/pi/LOGS/RPi_BLE_Scanner/" << subdirectoryName;
+    
+    umask(0);
+    mkdir("//home/pi/LOGS", 0755);
+    mkdir("//home/pi/LOGS/RPi_BLE_Scanner", 0755);
+    mkdir(fileLogNameStream.str().c_str(), 0755);
     
     time_t timeRaw;
             
@@ -529,13 +536,11 @@ void BaseController_RPi::logToFileWithDirectory(const std::exception& e, std::st
             
     std::strftime(time, 20, "%F_%T", &timeInfo);
         
-    std::stringstream fileLogNameStream;
-        
-    fileLogNameStream << directoryName << "/" << time << ".log";
+    fileLogNameStream << "/" << time << ".log";
         
     std::ofstream fileLog(fileLogNameStream.str());
     
-    if (fileLog.is_open())       
+    if (fileLog.is_open())
         fileLog << e.what() << std::endl;
         
     fileLog.close();
