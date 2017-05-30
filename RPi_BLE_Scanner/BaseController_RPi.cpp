@@ -201,7 +201,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::memcpy(static_cast<void*>(buffer + 36), static_cast<const void*>(_conduitName.c_str()), _conduitNameLength);
             
-            std::cout << it->first << "|" << it->second->Temperature << "|" << it->second->Humidity << "|" << it->second->Battery << std::endl;
+            std::cout << it->first << "|" << it->second->Temperature << "|" << it->second->Humidity << "|" << static_cast<unsigned long int>(it->second->Battery) << std::endl;
 
             try
             {              

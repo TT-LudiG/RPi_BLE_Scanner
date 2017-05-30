@@ -14,8 +14,6 @@ BaseController::BaseController(const unsigned short int port)
 
     _networkControllerPtr = new NetworkController(port);
 
-    _mySQLControllerPtr = new MySQLController();
-
     _sessionCount = 0;
 
     _isDone = false;
@@ -262,8 +260,6 @@ void BaseController::handleSession(const unsigned long int sessionID)
 
                     fileLog.close();
                 }
-
-                //std::cout << conduitNameString << ": " << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
 
                 currentIndex += static_cast<int>(messageLength) + 1;
             }

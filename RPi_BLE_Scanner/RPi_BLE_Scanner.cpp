@@ -4,8 +4,8 @@
 
 #include "BaseController_RPi.h"
 
-#define SERVERNAME "whizzdev.dyndns.org"
-#define PORT "9062"
+#define SERVERNAME "41.185.23.172"
+#define PORT "2226"
 
 #define CONDUITNAME "RPi-Dev"
 
