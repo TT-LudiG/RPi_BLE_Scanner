@@ -189,158 +189,84 @@ void BaseController::handleSession(const unsigned long int sessionID)
         {
             start = std::clock();
 
-            std::stringstream bufferStream;
+            long int currentIndex = 0;
 
-            // REINTERPRET_CAST!
+            while (currentIndex < bufferLength)
+            {
+                unsigned char messageLength;
 
-            bufferStream.write(reinterpret_cast<const char*>(buffer), bufferLength);
+                unsigned char temperatureLength;
+                unsigned char humidityLength;
+                unsigned char batteryLength;
 
-            std::string currentLine;
+                unsigned char conduitNameLength;
 
-            std::getline(bufferStream, currentLine);
+                char id[6];
 
-            std::stringstream currentLineStream(currentLine);
+                short int temperature;
+                unsigned short int humidity;
+                unsigned char battery;
 
-            std::string currentField;
+                char time[20];
 
-            std::getline(currentLineStream, currentField, '&');
+                char conduitName[50];
 
-            std::string id = currentField.substr(currentField.find('=') + 1);
+                memcpy(static_cast<void*>(&messageLength), static_cast<const void*>(buffer + currentIndex), 1);
 
-            std::getline(currentLineStream, currentField, '&');
+                if ((static_cast<int>(messageLength) + 1) > bufferLength)
+                    break;
 
-            unsigned long int timestamp = std::stoi(currentField.substr(currentField.find('=') + 1));
+                currentIndex += 1;
+                memcpy(static_cast<void*>(id), static_cast<const void*>(buffer + currentIndex), 6);
 
-            std::getline(currentLineStream, currentField, '&');
+                currentIndex += 6;
+                memcpy(static_cast<void*>(&temperatureLength), static_cast<const void*>(buffer + currentIndex), 1);
+                currentIndex += 1;
+                if (temperatureLength == sizeof(temperature))
+                    memcpy(static_cast<void*>(&temperature), static_cast<const void*>(buffer + currentIndex), temperatureLength);
 
-            std::string data = currentField.substr(currentField.find('=') + 1);
+                currentIndex += temperatureLength;
+                memcpy(static_cast<void*>(&humidityLength), static_cast<const void*>(buffer + currentIndex), 1);
+                currentIndex += 1;
+                if (humidityLength == sizeof(humidity))
+                    memcpy(static_cast<void*>(&humidity), static_cast<const void*>(buffer + currentIndex), humidityLength);
 
-            std::cout << data << std::endl;
+                currentIndex += humidityLength;
+                memcpy(static_cast<void*>(&batteryLength), static_cast<const void*>(buffer + currentIndex), 1);
+                currentIndex += 1;
+                if (batteryLength == sizeof(battery))
+                    memcpy(static_cast<void*>(&battery), static_cast<const void*>(buffer + currentIndex), batteryLength);
 
-            std::getline(currentLineStream, currentField, '&');
+                currentIndex += batteryLength;
+                memcpy(static_cast<void*>(time), static_cast<const void*>(buffer + currentIndex), 20);
 
-            std::string station = currentField.substr(currentField.find('=') + 1);
+                currentIndex += 20;
+                memcpy(static_cast<void*>(&conduitNameLength), static_cast<const void*>(buffer + currentIndex), 1);
+                currentIndex += 1;
+                memcpy(static_cast<void*>(&conduitName), static_cast<const void*>(buffer + currentIndex), conduitNameLength);
 
-            std::cout << station << std::endl;
+                std::stringstream idBuffer;
 
-            std::getline(currentLineStream, currentField, '&');
+                idBuffer << std::hex << std::uppercase;
 
-            float latitude = std::stof(currentField.substr(currentField.find('=') + 1));
+                for (unsigned int i = 0; i < 6; ++i)
+                    idBuffer << std::setfill('0') << std::setw(2) << static_cast<int>(id[i]);
 
-            std::cout << latitude << std::endl;
+                std::string conduitNameString(conduitName, conduitNameLength);
 
-            std::getline(currentLineStream, currentField, '&');
+                std::ofstream fileLog("LOG_BLE.txt", std::ofstream::app);
 
-            float longitude = std::stof(currentField.substr(currentField.find('=') + 1));
+                if (fileLog.is_open())
+                {
+                    fileLog << conduitNameString << ": " << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
 
-            std::cout << longitude << std::endl;
+                    fileLog.close();
+                }
 
-            std::getline(currentLineStream, currentField, '&');
+                //std::cout << conduitNameString << ": " << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
 
-            float noiseAverage = std::stof(currentField.substr(currentField.find('=') + 1));
-
-            std::cout << noiseAverage << std::endl;
-
-            std::getline(currentLineStream, currentField, '&');
-
-            float rssi = std::stof(currentField.substr(currentField.find('=') + 1));
-
-            std::cout << rssi << std::endl;
-
-            std::getline(currentLineStream, currentField, '&');
-
-            unsigned long int sequenceNo = std::stoi(currentField.substr(currentField.find('=') + 1));
-
-            std::cout << sequenceNo << std::endl;
-
-            //try
-            //{
-            //    _mySQLControllerPtr->insertValuesRaw("5F87RF", 1493299361, "45854X2S5S12", "59172", -23.5, 12.0, 74.34, -187.00, 52);
-            //}
-
-            //catch (const sql::SQLException&)
-            //{
-            //    // Do nothing.
-            //}
-
-            //long int currentIndex = 0;
-
-            //while (currentIndex < bufferLength)
-            //{
-            //    unsigned char messageLength;
-
-            //    unsigned char temperatureLength;
-            //    unsigned char humidityLength;
-            //    unsigned char batteryLength;
-
-            //    unsigned char conduitNameLength;
-
-            //    char id[6];
-
-            //    short int temperature;
-            //    unsigned short int humidity;
-            //    unsigned char battery;
-
-            //    char time[20];
-
-            //    char conduitName[50];
-
-            //    memcpy(static_cast<void*>(&messageLength), static_cast<const void*>(buffer + currentIndex), 1);
-
-            //    if ((static_cast<int>(messageLength) + 1) > bufferLength)
-            //        break;
-
-            //    currentIndex += 1;
-            //    memcpy(static_cast<void*>(id), static_cast<const void*>(buffer + currentIndex), 6);
-
-            //    currentIndex += 6;
-            //    memcpy(static_cast<void*>(&temperatureLength), static_cast<const void*>(buffer + currentIndex), 1);
-            //    currentIndex += 1;
-            //    if (temperatureLength == sizeof(temperature))
-            //        memcpy(static_cast<void*>(&temperature), static_cast<const void*>(buffer + currentIndex), temperatureLength);
-
-            //    currentIndex += temperatureLength;
-            //    memcpy(static_cast<void*>(&humidityLength), static_cast<const void*>(buffer + currentIndex), 1);
-            //    currentIndex += 1;
-            //    if (humidityLength == sizeof(humidity))
-            //        memcpy(static_cast<void*>(&humidity), static_cast<const void*>(buffer + currentIndex), humidityLength);
-
-            //    currentIndex += humidityLength;
-            //    memcpy(static_cast<void*>(&batteryLength), static_cast<const void*>(buffer + currentIndex), 1);
-            //    currentIndex += 1;
-            //    if (batteryLength == sizeof(battery))
-            //        memcpy(static_cast<void*>(&battery), static_cast<const void*>(buffer + currentIndex), batteryLength);
-
-            //    currentIndex += batteryLength;
-            //    memcpy(static_cast<void*>(time), static_cast<const void*>(buffer + currentIndex), 20);
-
-            //    currentIndex += 20;
-            //    memcpy(static_cast<void*>(&conduitNameLength), static_cast<const void*>(buffer + currentIndex), 1);
-            //    currentIndex += 1;
-            //    memcpy(static_cast<void*>(&conduitName), static_cast<const void*>(buffer + currentIndex), conduitNameLength);
-
-            //    std::stringstream idBuffer;
-
-            //    idBuffer << std::hex << std::uppercase;
-
-            //    for (unsigned int i = 0; i < 6; ++i)
-            //        idBuffer << std::setfill('0') << std::setw(2) << static_cast<int>(id[i]);
-
-            //    std::string conduitNameString(conduitName, conduitNameLength);
-
-            //    std::ofstream fileLog("LOG_BLE.txt", std::ofstream::app);
-
-            //    if (fileLog.is_open())
-            //    {
-            //        fileLog << conduitNameString << ": " << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
-
-            //        fileLog.close();
-            //    }
-
-            //    //std::cout << conduitNameString << ": " << idBuffer.str() << "|" << temperature << "|" << humidity << "|" << static_cast<int>(battery) << "|" << time << std::endl;
-
-            //    currentIndex += static_cast<int>(messageLength) + 1;
-            //}
+                currentIndex += static_cast<int>(messageLength) + 1;
+            }
         }
 
         else
