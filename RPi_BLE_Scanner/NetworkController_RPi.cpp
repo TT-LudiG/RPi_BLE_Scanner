@@ -32,9 +32,8 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     struct sockaddr_in* socketAddress;
     
     struct addrinfo* result;
-    struct addrinfo hints;
     
-    unsigned long int status = getaddrinfo(servername.c_str(), port.c_str(), &hints, &result);
+    unsigned long int status = getaddrinfo(servername.c_str(), port.c_str(), nullptr, &result);
     
     if (status != 0)
     {
