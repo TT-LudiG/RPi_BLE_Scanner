@@ -72,7 +72,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseController_RPi.h" />
-    <ClInclude Include="BeaconState.h" />
     <ClInclude Include="BluetoothController.h" />
     <ClInclude Include="BluetoothExceptions.h" />
     <ClInclude Include="GSMController.h" />

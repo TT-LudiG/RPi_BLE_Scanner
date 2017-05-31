@@ -6,7 +6,6 @@
 #include <map>
 #include <mutex>
 
-#include "BeaconState.h"
 #include "BluetoothController.h"
 #include "GSMController.h"
 #include "NetworkController_RPi.h"
@@ -39,7 +38,7 @@ private:
 
     std::condition_variable _cv;
     
-    std::map<std::string, BeaconState*> _beacons;
+    std::map<std::string, std::string> _beacons;
     
     static const std::string _base64Chars;
     

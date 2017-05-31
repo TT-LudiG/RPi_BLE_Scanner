@@ -67,13 +67,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
 }
 
 BaseController_RPi::~BaseController_RPi(void)
-{
-    std::map<std::string, BeaconState*>::const_iterator it;
-    
-    for (it = _beacons.begin(); it != _beacons.end(); ++it)
-        if (it->second != nullptr)
-            delete it->second;
-    
+{  
     if (_networkControllerPtr != nullptr)
         delete _networkControllerPtr;
     
@@ -164,7 +158,7 @@ void BaseController_RPi::sendDataPeriodically(void)
     
     while (!_isDone)
     {
-        std::map<std::string, BeaconState*>::const_iterator it;
+        std::map<std::string, std::string>::const_iterator it;
         
         for (it = _beacons.begin(); it != _beacons.end(); ++it)
         {
@@ -181,33 +175,37 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
+            HTTPRequest_POST httpRequest("/api/blebeacons", "127.0.0.1");
+            
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
-
-            unsigned long int messageLength = _conduitNameLength + 35;
             
-            buffer[0] = messageLength;
-            buffer[7] = 2;
-            buffer[10] = 2;
-            buffer[13] = 1;
-            buffer[35] = _conduitNameLength;
+            unsigned char idLength = it->first.length();
             
-            for (unsigned char i = 0; i < 6; ++i)
-                buffer[i + 1] = static_cast<unsigned char>(std::stoul(it->first.substr(i * 2, 2), nullptr, 16));
-
-            std::memcpy(static_cast<void*>(buffer + 8), static_cast<const void*>(&it->second->Temperature), 2);
-            std::memcpy(static_cast<void*>(buffer + 11), static_cast<const void*>(&it->second->Humidity), 2);
-            std::memcpy(static_cast<void*>(buffer + 14), static_cast<const void*>(&it->second->Battery), 1);
-            std::memcpy(static_cast<void*>(buffer + 15), static_cast<const void*>(time), 20);
+            buffer[0] = idLength;
             
-            std::memcpy(static_cast<void*>(buffer + 36), static_cast<const void*>(_conduitName.c_str()), _conduitNameLength);
+            std::memcpy(static_cast<void*>(buffer + 1), static_cast<const void*>(it->first.c_str()), idLength);
             
-            std::cout << it->first << "|" << it->second->Temperature << "|" << it->second->Humidity << "|" << static_cast<unsigned long int>(it->second->Battery) << std::endl;
+            unsigned char payloadLength = it->second.length();
+            
+            buffer[idLength + 1] = payloadLength;
+            
+            std::memcpy(static_cast<void*>(buffer + idLength + 2), static_cast<const void*>(it->second.c_str()), payloadLength);
+            
+            unsigned long int bufferLength = idLength + payloadLength + 2;
+            
+            httpRequest.setContent(buffer, bufferLength);
+            
+            std::memset(buffer, bufferLength, 0);
+            
+            bufferLength = httpRequest.serialise(buffer, HTTP_REQUEST_LENGTH_MAX);
+            
+            std::cout << it->first << "|" << it->second << "|" << time << std::endl;
 
             try
-            {              
+            {
                 unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
                 
-                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, messageLength + 1);
+                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
                 
                 _networkControllerPtr->disconnectFromServer(sessionID);
             }
@@ -312,37 +310,26 @@ void BaseController_RPi::listenForBLEDevices(void)
                     unsigned char payloadData[12];
                     
                     std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 12);
+
+                    char idBuffer[6];
+                        
+                    ba2str(&infoPtr->bdaddr, idBuffer);
+                        
+                    std::string id = idBuffer;
                     
-                    std::string payload = base64Decode(payloadData, 12);
-                    
-                    if (payload.size() == 9)
+                    std::string payload(payloadData, payloadData + 12);
+                        
+                    id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
+                        
+                    if (_beacons.count(id) == 0)
                     {
-                        char idBuffer[6];
-                        
-                        ba2str(&infoPtr->bdaddr, idBuffer);
-                        
-                        std::string id = idBuffer;
-                        
-                        id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
-                        
-                        short int temperature = getTemperature(payload.substr(0, 4));
-                        unsigned short int humidity = std::stoi(payload.substr(4, 3)) & 0xFFFF;
-                        unsigned char battery = std::stoi(payload.substr(7, 2)) & 0xFF;
-                        
-                        if (_beacons.count(id) == 0)
-                        {
-                            _beacons.emplace(id, new BeaconState(temperature, humidity, battery));
+                        _beacons.emplace(id, payload);
                             
-                            ++_beaconsCount;
-                        }
-                        
-                        else
-                        {
-                            _beacons.at(id)->Temperature = temperature;
-                            _beacons.at(id)->Humidity = humidity;
-                            _beacons.at(id)->Battery = battery;
-                        }
+                        ++_beaconsCount;
                     }
+                        
+                    else
+                        _beacons.at(id) = payload;
                 }
         
                 offsetPtr = infoPtr->data + (infoPtr->length + 2);
