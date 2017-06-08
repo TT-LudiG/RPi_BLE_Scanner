@@ -11,6 +11,8 @@
 #include "BaseController_RPi.h"
 #include "HTTPRequest_POST.h"
 
+#include "HTTPRequest_GET.h"
+
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec):
@@ -175,29 +177,25 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
-            HTTPRequest_POST httpRequest("/api/blebeacons", "127.0.0.1");
+            HTTPRequest_POST message("/api/blebeacons", _servername + ":" + _port);
             
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
             
-            unsigned char idLength = it->first.length();
+            std::stringstream bodyStream;
             
-            buffer[0] = idLength;
+            bodyStream << "ID=" << it->first << "&Base64EncodedString=" << it->second;
             
-            std::memcpy(static_cast<void*>(buffer + 1), static_cast<const void*>(it->first.c_str()), idLength);
+            std::string body = bodyStream.str();
             
-            unsigned char payloadLength = it->second.length();
+            unsigned long int bufferLength = body.length();
             
-            buffer[idLength + 1] = payloadLength;
+            std::memcpy(static_cast<void*>(buffer), static_cast<const void*>(body.c_str()), bufferLength);
             
-            std::memcpy(static_cast<void*>(buffer + idLength + 2), static_cast<const void*>(it->second.c_str()), payloadLength);
-            
-            unsigned long int bufferLength = idLength + payloadLength + 2;
-            
-            httpRequest.setContent(buffer, bufferLength);
+            message.setContent(buffer, bufferLength);
             
             std::memset(buffer, bufferLength, 0);
             
-            bufferLength = httpRequest.serialise(buffer, HTTP_REQUEST_LENGTH_MAX);
+            bufferLength = message.serialise(buffer, sizeof(buffer));
             
             std::cout << it->first << "|" << it->second << "|" << time << std::endl;
 

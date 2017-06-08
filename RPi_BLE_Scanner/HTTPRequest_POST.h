@@ -6,7 +6,7 @@
 
 #include "HTTPRequest.h"
 
-#define HTTP_REQUEST_POST_CONTENT_TYPE "application/json; charset=utf-8"
+#define HTTP_REQUEST_POST_CONTENT_TYPE "application/x-www-form-urlencoded"
 
 // Define the max HTTP POST content length as half of the the MTU (Maximum Transmission Unit).
 
@@ -15,7 +15,7 @@
 class HTTPRequest_POST: public HTTPRequest
 {
 private:
-    const std::string _contentType;    
+    const std::string _contentType;
     unsigned long int _contentLength;
     
     unsigned char _content[HTTP_REQUEST_POST_CONTENT_LENGTH_MAX];
@@ -58,7 +58,7 @@ public:
         unsigned long int outputLength = outputString.length();
         
         if (outputLength <= bufferLength)
-        {     
+        {
             std::memcpy(static_cast<void*>(outputBuffer), static_cast<const void*>(outputString.c_str()), outputLength);
             
             return outputLength;

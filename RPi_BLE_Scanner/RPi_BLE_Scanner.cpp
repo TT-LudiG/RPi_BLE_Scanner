@@ -5,7 +5,7 @@
 #include "BaseController_RPi.h"
 
 #define SERVERNAME "41.185.23.172"
-#define PORT "2226"
+#define PORT "49997"
 
 #define CONDUITNAME "RPi-Dev"
 

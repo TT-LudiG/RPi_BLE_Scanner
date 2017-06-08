@@ -26,7 +26,7 @@ public:
         unsigned long int outputLength = outputString.length();
         
         if (outputLength <= bufferLength)
-        {     
+        {
             std::memcpy(static_cast<void*>(outputBuffer), static_cast<const void*>(outputString.c_str()), outputLength);
             
             return outputLength;
