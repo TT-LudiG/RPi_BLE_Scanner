@@ -11,8 +11,6 @@
 #include "BaseController_RPi.h"
 #include "HTTPRequest_POST.h"
 
-#include "HTTPRequest_GET.h"
-
 const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec):
@@ -69,7 +67,13 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
 }
 
 BaseController_RPi::~BaseController_RPi(void)
-{  
+{
+    std::map<std::string, PacketBLE*>::const_iterator it;
+        
+    for (it = _beacons.begin(); it != _beacons.end(); ++it)
+        if (it->second != nullptr)
+            delete it->second;
+    
     if (_networkControllerPtr != nullptr)
         delete _networkControllerPtr;
     
@@ -154,13 +158,16 @@ void BaseController_RPi::monitorSenderThread(void)
 
 void BaseController_RPi::sendDataPeriodically(void)
 {
+    std::string baseID = "NULL";
+    std::string baseLocation = "NULL";
+    
     std::unique_lock<std::mutex> lock(_mutex);
     
     lock.unlock();
     
     while (!_isDone)
     {
-        std::map<std::string, std::string>::const_iterator it;
+        std::map<std::string, PacketBLE*>::const_iterator it;
         
         for (it = _beacons.begin(); it != _beacons.end(); ++it)
         {
@@ -177,13 +184,52 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
-            HTTPRequest_POST message("/api/blebeacons", _servername + ":" + _port);
+            std::ifstream configFile("//home/pi/CONFIG/RPi_BLE_Scanner/config.urlencoded");
+            
+            if (configFile.is_open())
+            {
+                std::string urlencodedString;
+                
+                configFile >> urlencodedString;
+                
+                std::unordered_map<std::string, std::string> urldecodedPairs = getURLDecodedPairs(urlencodedString);
+                
+                std::size_t indexSpace;
+                
+                baseID = urldecodedPairs.at("BaseID");
+                
+                indexSpace = baseID.find(' ');
+                
+                while (indexSpace != std::string::npos)
+                {
+                    baseID.replace(indexSpace, 1, "+");
+                    
+                    indexSpace = baseID.find(' ');
+                }
+                
+                baseLocation = urldecodedPairs.at("BaseLocation");
+                
+                indexSpace = baseLocation.find(' ');
+                
+                while (indexSpace != std::string::npos)
+                {
+                    baseLocation.replace(indexSpace, 1, "+");
+                    
+                    indexSpace = baseLocation.find(' ');
+                }
+                
+                configFile.close();
+            }
+            
+            HTTPRequest_POST message("/api/blebeacons", _servername + ":" + _port, "close", "application/json");
             
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
             
             std::stringstream bodyStream;
             
-            bodyStream << "ID=" << it->first << "&Base64EncodedString=" << it->second;
+            bodyStream << "{\"ID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << timeRaw << ", \"BaseID\": \"" << baseID << "\", \"BaseLocation\": \"" << baseLocation << "\"}";
+            
+//            bodyStream << "ID=" << it->first << "&Base64EncodedString=" << it->second->payload << "&RSSI=" << it->second->rssi << "&Timestamp=" << timeRaw << "&BaseID=" << baseID << "&BaseLocation=" << baseLocation;
             
             std::string body = bodyStream.str();
             
@@ -193,17 +239,19 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             message.setContent(buffer, bufferLength);
             
-            std::memset(buffer, bufferLength, 0);
+            std::memset(static_cast<void*>(buffer), 0, bufferLength);
             
             bufferLength = message.serialise(buffer, sizeof(buffer));
             
-            std::cout << it->first << "|" << it->second << "|" << time << std::endl;
-
+            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << time << std::endl;
+            
             try
             {
                 unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
                 
                 _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+                
+                std::this_thread::sleep_for(std::chrono::seconds(1));
                 
                 _networkControllerPtr->disconnectFromServer(sessionID);
             }
@@ -228,6 +276,12 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             lock.unlock();
         }
+        
+        for (it = _beacons.begin(); it != _beacons.end(); ++it)
+            if (it->second != nullptr)
+                delete it->second;
+        
+        _beacons.clear();
         
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         
@@ -285,7 +339,7 @@ void BaseController_RPi::listenForBLEDevices(void)
             void* offsetPtr = metaPtr->data + 1;
             
             while (reportCount--)
-            {    
+            {
                 le_advertising_info* infoPtr = static_cast<le_advertising_info*>(offsetPtr);
                 
                 unsigned char dataLength = infoPtr->length;
@@ -302,32 +356,41 @@ void BaseController_RPi::listenForBLEDevices(void)
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
                 if (manufacturer == "INO")
-                {       
-                    // Base64-encoded data is found from indices 10-21 (length: 12).
+                {
+                    // RSSi is found at the index after the payload.
                     
-                    unsigned char payloadData[12];
+                    long int rssi = static_cast<long int>(static_cast<signed char>(infoPtr->data[dataLength]));
                     
-                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 12);
+                    // Base64-encoded data is found from indices 10-22 (length: 13).
+                    
+                    unsigned char payloadData[13];
+                    
+                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 10), 13);
+                    
+                    std::string payload(payloadData, payloadData + 13);
 
                     char idBuffer[6];
-                        
+                    
                     ba2str(&infoPtr->bdaddr, idBuffer);
-                        
+                    
                     std::string id = idBuffer;
                     
-                    std::string payload(payloadData, payloadData + 12);
-                        
+                    std::transform(id.begin(), id.end(), id.begin(), ::tolower);
+                    
                     id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
-                        
+                    
                     if (_beacons.count(id) == 0)
                     {
-                        _beacons.emplace(id, payload);
-                            
+                        _beacons.emplace(id, new PacketBLE(rssi, payload));
+                        
                         ++_beaconsCount;
                     }
                         
                     else
-                        _beacons.at(id) = payload;
+                    {
+                        _beacons.at(id)->rssi = rssi;
+                        _beacons.at(id)->payload = payload;
+                    }
                 }
         
                 offsetPtr = infoPtr->data + (infoPtr->length + 2);
@@ -356,6 +419,51 @@ short int BaseController_RPi::getTemperature(const std::string temperatureString
         temperature *= -1;
     
     return temperature;
+}
+
+std::unordered_map<std::string, std::string> BaseController_RPi::getURLDecodedPairs(const std::string urlencodedString)
+{
+    std::unordered_map<std::string, std::string> urldecodedPairs;
+    
+    std::stringstream urlencodedStream(urlencodedString);
+    
+    std::string urlencodedPairCurrent;
+    
+    while (std::getline(urlencodedStream, urlencodedPairCurrent, '&'))
+    {
+        std::size_t indexDivider = urlencodedPairCurrent.find('=');
+        
+        if (indexDivider == std::string::npos)
+            continue;
+        
+        std::size_t indexSpace;
+        
+        std::string key = urlencodedPairCurrent.substr(0, indexDivider);
+        
+        indexSpace = key.find('+');
+                
+        while (indexSpace != std::string::npos)
+        {
+            key.replace(indexSpace, 1, " ");
+                    
+            indexSpace = key.find('+');
+        }
+        
+        std::string value = urlencodedPairCurrent.substr(indexDivider + 1);
+        
+        indexSpace = value.find('+');
+                
+        while (indexSpace != std::string::npos)
+        {
+            value.replace(indexSpace, 1, " ");
+                    
+            indexSpace = value.find('+');
+        }
+        
+        urldecodedPairs.emplace(key, value);        
+    }
+    
+    return urldecodedPairs;
 }
 
 // The "isBase64" and "base64Decode" functions were based off of 3rd-party source code (since altered), distributed under the following license:

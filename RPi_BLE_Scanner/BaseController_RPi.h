@@ -9,6 +9,7 @@
 #include "BluetoothController.h"
 #include "GSMController.h"
 #include "NetworkController_RPi.h"
+#include "PacketBLE.h"
 
 #define DELAY_SENDER_POST_IN_SEC 1
 
@@ -38,11 +39,13 @@ private:
 
     std::condition_variable _cv;
     
-    std::map<std::string, std::string> _beacons;
+    std::map<std::string, PacketBLE*> _beacons;
     
     static const std::string _base64Chars;
     
     static short int getTemperature(const std::string temperatureString);
+    
+    std::unordered_map<std::string, std::string> getURLDecodedPairs(const std::string urlencodedString);
     
     static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);

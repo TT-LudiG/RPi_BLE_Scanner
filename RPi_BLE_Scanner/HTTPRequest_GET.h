@@ -9,16 +9,16 @@
 class HTTPRequest_GET: public HTTPRequest
 {    
 public:
-    HTTPRequest_GET(const std::string requestURI, const std::string host): HTTPRequest("GET", requestURI, host) {}
+    HTTPRequest_GET(const std::string requestURI, const std::string host, const std::string connection):
+        HTTPRequest("GET", requestURI, host, connection) {}
     
     virtual unsigned long int serialise(unsigned char* outputBuffer, const unsigned long int bufferLength) const
     {
         std::stringstream outputStream;
         
-        outputStream << _method << " " << _requestURI << " " << _versionHTTP << "\r\n";
-        
+        outputStream << _method << " " << _requestURI << " " << _versionHTTP << "\r\n";        
         outputStream << "Host: " << _host << "\r\n";
-        
+        outputStream << "Connection: " << _connection << "\r\n";
         outputStream << "\r\n";
         
         std::string outputString = outputStream.str();
