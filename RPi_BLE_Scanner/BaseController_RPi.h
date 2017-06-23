@@ -44,8 +44,8 @@ private:
     static const std::string _base64Chars;
     
     static short int getTemperature(const std::string temperatureString);
-    
-    std::unordered_map<std::string, std::string> getURLDecodedPairs(const std::string urlencodedString);
+
+    std::unordered_map<std::string, std::string> getJSONPairs(const std::string jsonString);
     
     static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);

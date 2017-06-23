@@ -167,6 +167,24 @@ void BaseController_RPi::sendDataPeriodically(void)
     
     while (!_isDone)
     {
+        std::ifstream configFile("//home/pi/CONFIG/RPi_BLE_Scanner/config.json");
+        
+        if (configFile.is_open())
+        {
+            std::stringstream jsonStream;
+                
+            jsonStream << configFile.rdbuf();
+                
+            std::unordered_map<std::string, std::string> jsonPairs = getJSONPairs(jsonStream.str());
+                
+            std::size_t indexSpace;
+                
+            baseID = jsonPairs.at("BaseID");               
+            baseLocation = jsonPairs.at("BaseLocation");
+                
+            configFile.close();
+        }
+        
         std::map<std::string, PacketBLE*>::const_iterator it;
         
         for (it = _beacons.begin(); it != _beacons.end(); ++it)
@@ -184,43 +202,6 @@ void BaseController_RPi::sendDataPeriodically(void)
             
             std::strftime(time, 20, "%F %T", &timeInfo);
             
-            std::ifstream configFile("//home/pi/CONFIG/RPi_BLE_Scanner/config.urlencoded");
-            
-            if (configFile.is_open())
-            {
-                std::string urlencodedString;
-                
-                configFile >> urlencodedString;
-                
-                std::unordered_map<std::string, std::string> urldecodedPairs = getURLDecodedPairs(urlencodedString);
-                
-                std::size_t indexSpace;
-                
-                baseID = urldecodedPairs.at("BaseID");
-                
-                indexSpace = baseID.find(' ');
-                
-                while (indexSpace != std::string::npos)
-                {
-                    baseID.replace(indexSpace, 1, "+");
-                    
-                    indexSpace = baseID.find(' ');
-                }
-                
-                baseLocation = urldecodedPairs.at("BaseLocation");
-                
-                indexSpace = baseLocation.find(' ');
-                
-                while (indexSpace != std::string::npos)
-                {
-                    baseLocation.replace(indexSpace, 1, "+");
-                    
-                    indexSpace = baseLocation.find(' ');
-                }
-                
-                configFile.close();
-            }
-            
             HTTPRequest_POST message("/api/blebeacons", _servername + ":" + _port, "close", "application/json");
             
             unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
@@ -228,8 +209,6 @@ void BaseController_RPi::sendDataPeriodically(void)
             std::stringstream bodyStream;
             
             bodyStream << "{\"ID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << timeRaw << ", \"BaseID\": \"" << baseID << "\", \"BaseLocation\": \"" << baseLocation << "\"}";
-            
-//            bodyStream << "ID=" << it->first << "&Base64EncodedString=" << it->second->payload << "&RSSI=" << it->second->rssi << "&Timestamp=" << timeRaw << "&BaseID=" << baseID << "&BaseLocation=" << baseLocation;
             
             std::string body = bodyStream.str();
             
@@ -421,49 +400,67 @@ short int BaseController_RPi::getTemperature(const std::string temperatureString
     return temperature;
 }
 
-std::unordered_map<std::string, std::string> BaseController_RPi::getURLDecodedPairs(const std::string urlencodedString)
+std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(const std::string jsonString)
 {
-    std::unordered_map<std::string, std::string> urldecodedPairs;
+    std::unordered_map<std::string, std::string> jsonPairs;
     
-    std::stringstream urlencodedStream(urlencodedString);
+    std::size_t indexBraceFirst, indexBraceLast;
     
-    std::string urlencodedPairCurrent;
+    indexBraceFirst = jsonString.find_first_of('{');
+    indexBraceLast = jsonString.find_last_of('}');
     
-    while (std::getline(urlencodedStream, urlencodedPairCurrent, '&'))
+    std::string bodyString = jsonString.substr(indexBraceFirst + 1, indexBraceLast - (indexBraceFirst + 1));
+    
+    std::stringstream bodyStream(bodyString);
+    
+    std::string jsonPairCurrent;
+    
+    while (std::getline(bodyStream, jsonPairCurrent, ','))
     {
-        std::size_t indexDivider = urlencodedPairCurrent.find('=');
+        std::size_t indexColon = jsonPairCurrent.find(':');
         
-        if (indexDivider == std::string::npos)
-            continue;
+        std::string key = jsonPairCurrent.substr(0, indexColon);
         
-        std::size_t indexSpace;
-        
-        std::string key = urlencodedPairCurrent.substr(0, indexDivider);
-        
-        indexSpace = key.find('+');
-                
-        while (indexSpace != std::string::npos)
+        if (key.find('"') != std::string::npos)
         {
-            key.replace(indexSpace, 1, " ");
-                    
-            indexSpace = key.find('+');
+            std::size_t indexQuotationFirst, indexQuotationLast;
+            
+            indexQuotationFirst = key.find_first_of('"');
+            indexQuotationLast = key.find_last_of('"');
+            
+            key = key.substr(indexQuotationFirst + 1, indexQuotationLast - (indexQuotationFirst + 1));
         }
         
-        std::string value = urlencodedPairCurrent.substr(indexDivider + 1);
-        
-        indexSpace = value.find('+');
-                
-        while (indexSpace != std::string::npos)
+        else
         {
-            value.replace(indexSpace, 1, " ");
-                    
-            indexSpace = value.find('+');
+            std::stringstream keyStream(key);
+            
+            keyStream >> key;
         }
         
-        urldecodedPairs.emplace(key, value);        
+        std::string value = jsonPairCurrent.substr(indexColon);
+        
+        if (value.find('"') != std::string::npos)
+        {
+            std::size_t indexQuotationFirst, indexQuotationLast;
+            
+            indexQuotationFirst = value.find_first_of('"');
+            indexQuotationLast = value.find_last_of('"');
+            
+            value = value.substr(indexQuotationFirst + 1, indexQuotationLast - (indexQuotationFirst + 1));
+        }
+        
+        else
+        {
+            std::stringstream valueStream(value);
+            
+            valueStream >> value;
+        }
+        
+        jsonPairs.emplace(key, value);
     }
     
-    return urldecodedPairs;
+    return jsonPairs;
 }
 
 // The "isBase64" and "base64Decode" functions were based off of 3rd-party source code (since altered), distributed under the following license:
