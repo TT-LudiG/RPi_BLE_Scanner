@@ -10,14 +10,14 @@ class BluetoothController
 private:    
     long int _hciDeviceHandle, _hciStatus;
     
+    void openHCIDevice_Default(void);
+    void closeHCIDevice(void) const;
+    
     static struct hci_request getHCIRequest_BLE(const unsigned short int ocf, const long int clen, void* status, void* cparam);
 	
 public:   
     BluetoothController(void);    
     ~BluetoothController(void);
-
-    void openHCIDevice_Default(void);
-    void closeHCIDevice(void) const;
 
     void startHCIScan_BLE(void);
     void stopHCIScan_BLE(void);

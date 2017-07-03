@@ -12,9 +12,7 @@
 #define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
-{
-    std::this_thread::sleep_for(std::chrono::minutes(1));
-    
+{  
     std::string servername = SERVERNAME;
     std::string port = PORT;
     
@@ -108,7 +106,11 @@ int main(int argc, char* argv[])
     }
 
     std::thread listenerThread(&BaseController_RPi::listenForBLEDevices, baseControllerPtr);
+    
     std::thread senderThread(&BaseController_RPi::sendDataPeriodically, baseControllerPtr);
+    
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    
     std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
     
     std::cout << "Enter 'q' (quit), 'e' (exit) or 'c' (close) to end the program..." << std::endl;

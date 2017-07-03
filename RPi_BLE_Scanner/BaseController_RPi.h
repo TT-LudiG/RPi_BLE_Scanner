@@ -29,12 +29,12 @@ private:
     const unsigned long int _delaySenderLoopInSec;
 
     std::atomic<bool> _isDone;
+    std::atomic<bool> _isScanning;
 
     std::mutex _mutex;
     std::atomic<bool> _isReady;
     std::atomic<bool> _isWaiting;
     std::atomic<bool> _hasWoken;
-    std::atomic<unsigned long int> _beaconsCount;
     std::atomic<unsigned long int> _loopsCount;
 
     std::condition_variable _cv;

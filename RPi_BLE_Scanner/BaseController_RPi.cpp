@@ -58,11 +58,11 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     _conduitNameLength = _conduitName.length();
     
     _isDone = false;
+    _isScanning = false;
     
     _isReady = false;
     _isWaiting = false;
     _hasWoken = false;
-    _beaconsCount = 0;
     _loopsCount = 0;
 }
 
@@ -77,24 +77,17 @@ BaseController_RPi::~BaseController_RPi(void)
     if (_networkControllerPtr != nullptr)
         delete _networkControllerPtr;
     
-    try
+    if (_isScanning)
     {
-        _bluetoothControllerPtr->stopHCIScan_BLE();
-    }
+        try
+        {
+            _bluetoothControllerPtr->stopHCIScan_BLE();
+        }
     
-    catch (const std::exception& e)
-    {
-        logToFileWithSubdirectory(e, "Bluetooth");
-    }
-    
-    try
-    {
-        _bluetoothControllerPtr->closeHCIDevice();
-    }
-    
-    catch (const std::exception& e)
-    {
-        logToFileWithSubdirectory(e, "Bluetooth");
+        catch (const std::exception& e)
+        {
+            logToFileWithSubdirectory(e, "Bluetooth");
+        }
     }
     
     if (_bluetoothControllerPtr != nullptr)
@@ -284,6 +277,8 @@ void BaseController_RPi::listenForBLEDevices(void)
     try
     {
         _bluetoothControllerPtr->startHCIScan_BLE();
+        
+        _isScanning = true;
     }
     
     catch (const std::exception& e)
@@ -292,10 +287,12 @@ void BaseController_RPi::listenForBLEDevices(void)
     }
 	
     while (!_isDone)
-    {
+    {      
         unsigned char inputBuffer[HCI_MAX_EVENT_SIZE];
+        
+        long int inputLength = _bluetoothControllerPtr->readDeviceInput(inputBuffer, HCI_MAX_EVENT_SIZE);
 	    
-        if ((_bluetoothControllerPtr->readDeviceInput(inputBuffer, HCI_MAX_EVENT_SIZE)) < 0)
+        if (inputLength < 0)
         {
             if (errno == EAGAIN)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -304,8 +301,8 @@ void BaseController_RPi::listenForBLEDevices(void)
                 _isDone = true;
         }
 
-        else
-        {
+        else if (inputLength > 0)
+        {           
             // REINTERPRET_CAST!
             
             evt_le_meta_event* metaPtr = reinterpret_cast<evt_le_meta_event*>(inputBuffer + (1 + HCI_EVENT_HDR_SIZE));
@@ -335,8 +332,8 @@ void BaseController_RPi::listenForBLEDevices(void)
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
                 if (manufacturer == "INO")
-                {
-                    // RSSi is found at the index after the payload.
+                {                   
+                    // RSSI is found at the index after the payload.
                     
                     long int rssi = static_cast<long int>(static_cast<signed char>(infoPtr->data[dataLength]));
                     
@@ -359,11 +356,7 @@ void BaseController_RPi::listenForBLEDevices(void)
                     id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                     
                     if (_beacons.count(id) == 0)
-                    {
                         _beacons.emplace(id, new PacketBLE(rssi, payload));
-                        
-                        ++_beaconsCount;
-                    }
                         
                     else
                     {
@@ -377,7 +370,17 @@ void BaseController_RPi::listenForBLEDevices(void)
         }
     }
     
-    _bluetoothControllerPtr->stopHCIScan_BLE();
+    try
+    {
+        _bluetoothControllerPtr->stopHCIScan_BLE();
+        
+        _isScanning = false;
+    }
+    
+    catch (const std::exception& e)
+    {
+        logToFileWithSubdirectory(e, "Bluetooth");
+    }
 }
 
 void BaseController_RPi::setFinalised(void)
