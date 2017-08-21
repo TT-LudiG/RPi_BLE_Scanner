@@ -8,6 +8,7 @@
 
 #include "BluetoothController.h"
 #include "GSMController.h"
+#include "HTTPResponse.h"
 #include "NetworkController_RPi.h"
 #include "PacketBLE.h"
 
@@ -21,12 +22,11 @@ private:
     GSMController* _gsmControllerPtr;
     
     const std::string _servername;
-    const std::string _port;
+    const std::string _port_general;
+    const std::string _port_temperature;
+    const unsigned long int _delay_sender_loop_in_sec;
     
-    const std::string _conduitName;
-    unsigned long int _conduitNameLength;
-    
-    const unsigned long int _delaySenderLoopInSec;
+    unsigned long int _id;
 
     std::atomic<bool> _isDone;
     std::atomic<bool> _isScanning;
@@ -41,19 +41,25 @@ private:
     
     std::map<std::string, PacketBLE*> _beacons;
     
-    static const std::string _base64Chars;
+    unsigned long int getID(void) const;
+    
+    HTTPResponse sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInSec) const;
+    HTTPResponse sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInSec) const;
+    
+    static bool fileExists(const std::string directoryName, const std::string fileName);
+    
+    static void logToFileWithSubdirectory(const std::exception& e, const std::string subdirectoryName);
     
     static short int getTemperature(const std::string temperatureString);
-
-    std::unordered_map<std::string, std::string> getJSONPairs(const std::string jsonString);
+    static std::unordered_map<std::string, std::string> getJSONPairs(const std::string jsonString);    
+    static std::string getMACAddress(void);
+    static unsigned long int getTimeRaw_Now(void);
+    static std::string getTimeString_Now(const std::string format);
     
-    static bool isBase64(const unsigned char inputChar);
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
-    static void logToFileWithSubdirectory(const std::exception& e, std::string subdirectoryName);
-    
 public:
-    BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec);
+    BaseController_RPi(const std::string servername, const std::string port_general, const std::string port_temperature, const unsigned long int delay_sender_loop_in_sec);
     ~BaseController_RPi(void);
     
     void monitorSenderThread(void);
@@ -63,7 +69,7 @@ public:
     void listenForBLEDevices(void);
     
     void setFinalised(void);
-    bool getFinalised(void);
+    bool getFinalised(void) const;
 };
 
 #endif

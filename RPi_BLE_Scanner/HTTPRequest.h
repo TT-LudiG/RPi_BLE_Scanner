@@ -8,22 +8,21 @@
 #define HTTP_REQUEST_LENGTH_MAX 1400
 
 class HTTPRequest
-{
-protected:
-    const std::string _method;
-    const std::string _requestURI;
-    const std::string _versionHTTP;
-    
-    const std::string _host;
-    const std::string _connection;
-    
+{    
 public:
+    const std::string method;
+    const std::string requestURI;
+    const std::string versionHTTP;
+    
+    const std::string host;
+    const std::string connection;
+    
     HTTPRequest(const std::string method, const std::string requestURI, const std::string host, const std::string connection):
-        _method(method),
-        _requestURI(requestURI),
-        _versionHTTP("HTTP/1.1"),
-        _host(host),
-        _connection(connection) {}
+        method(method),
+        requestURI(requestURI),
+        versionHTTP("HTTP/1.1"),
+        host(host),
+        connection(connection) {}
     
     virtual unsigned long int serialise(unsigned char* outputBuffer, const unsigned long int bufferLength) const = 0;
 };

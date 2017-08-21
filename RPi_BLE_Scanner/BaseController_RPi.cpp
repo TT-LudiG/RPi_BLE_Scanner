@@ -6,19 +6,20 @@
 #include <sstream>
 #include <thread>
 
+#include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "BaseController_RPi.h"
+#include "HTTPRequest_GET.h"
 #include "HTTPRequest_POST.h"
 
-const std::string BaseController_RPi::_base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port, const std::string conduitName, const unsigned long int delaySenderLoopInSec):
+BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port_general, const std::string port_temperature, const unsigned long int delay_sender_loop_in_sec):
     _servername(servername),
-    _port(port),
-    _conduitName(conduitName),
-    _delaySenderLoopInSec(delaySenderLoopInSec)
-{   
+    _port_general(port_general),
+    _port_temperature(port_temperature),
+    _delay_sender_loop_in_sec(delay_sender_loop_in_sec)
+{
     try
     {
         _networkControllerPtr = new NetworkController_RPi();
@@ -55,8 +56,6 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
         throw e;
     }
     
-    _conduitNameLength = _conduitName.length();
-    
     _isDone = false;
     _isScanning = false;
     
@@ -64,6 +63,8 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     _isWaiting = false;
     _hasWoken = false;
     _loopsCount = 0;
+    
+    _id = getID();
 }
 
 BaseController_RPi::~BaseController_RPi(void)
@@ -131,7 +132,7 @@ void BaseController_RPi::monitorSenderThread(void)
             {             
                 // All client-listener threads wait for _delaySenderLoopInSec seconds (interruptible).
                 
-                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < _delaySenderLoopInSec)
+                while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < _delay_sender_loop_in_sec)
                     if (_isDone)
                         break;
             }
@@ -150,88 +151,39 @@ void BaseController_RPi::monitorSenderThread(void)
 }
 
 void BaseController_RPi::sendDataPeriodically(void)
-{
-    std::string baseID = "NULL";
-    std::string baseLocation = "NULL";
-    
+{    
     std::unique_lock<std::mutex> lock(_mutex);
     
     lock.unlock();
     
     while (!_isDone)
-    {
-        std::ifstream configFile("//home/pi/CONFIG/RPi_BLE_Scanner/config.json");
+    {  
+        // Send an alive status notification to the ThermoTrack_API_BLE_General Web API.
         
-        if (configFile.is_open())
         {
-            std::stringstream jsonStream;
-                
-            jsonStream << configFile.rdbuf();
-                
-            std::unordered_map<std::string, std::string> jsonPairs = getJSONPairs(jsonStream.str());
-                
-            std::size_t indexSpace;
-                
-            baseID = jsonPairs.at("BaseID");               
-            baseLocation = jsonPairs.at("BaseLocation");
-                
-            configFile.close();
+            std::stringstream bodyStream;
+        
+            bodyStream << "{\"ReaderID\": " << _id << "}";
+        
+            sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1);
         }
+        
+        // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
         
         std::map<std::string, PacketBLE*>::const_iterator it;
         
         for (it = _beacons.begin(); it != _beacons.end(); ++it)
-        {
+        {            
             if (_isDone)
                 return;
             
-            time_t timeRaw;
-            
-            std::time(&timeRaw);
-            
-            struct tm timeInfo = *std::localtime(&timeRaw);
-            
-            char time[20];
-            
-            std::strftime(time, 20, "%F %T", &timeInfo);
-            
-            HTTPRequest_POST message("/api/blebeacons", _servername + ":" + _port, "close", "application/json");
-            
-            unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F_%T") << std::endl;
             
             std::stringstream bodyStream;
             
-            bodyStream << "{\"ID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << timeRaw << ", \"BaseID\": \"" << baseID << "\", \"BaseLocation\": \"" << baseLocation << "\"}";
+            bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
             
-            std::string body = bodyStream.str();
-            
-            unsigned long int bufferLength = body.length();
-            
-            std::memcpy(static_cast<void*>(buffer), static_cast<const void*>(body.c_str()), bufferLength);
-            
-            message.setContent(buffer, bufferLength);
-            
-            std::memset(static_cast<void*>(buffer), 0, bufferLength);
-            
-            bufferLength = message.serialise(buffer, sizeof(buffer));
-            
-            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << time << std::endl;
-            
-            try
-            {
-                unsigned long int sessionID = _networkControllerPtr->connectToServer(_servername, _port);
-                
-                _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
-                
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                
-                _networkControllerPtr->disconnectFromServer(sessionID);
-            }
-            
-            catch (const std::exception& e)
-            {
-                logToFileWithSubdirectory(e, "Network");
-            }
+            sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1);
             
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
@@ -388,9 +340,190 @@ void BaseController_RPi::setFinalised(void)
     _isDone = true;
 }
 
-bool BaseController_RPi::getFinalised(void)
+bool BaseController_RPi::getFinalised(void) const
 {
     return _isDone;
+}
+
+unsigned long int BaseController_RPi::getID(void) const
+{
+    unsigned long int id = 0;
+    
+    // Check the config file for an existing ReaderID.
+    
+    if (fileExists("//home/pi/CONFIG", "RPi_BLE_Scanner.config"))
+    {
+        std::ifstream fileConfig("//home/pi/CONFIG/RPi_BLE_Scanner.config");
+        
+        if (fileConfig.is_open())
+        {
+            std::stringstream jsonStream;
+                
+            jsonStream << fileConfig.rdbuf();
+                
+            std::unordered_map<std::string, std::string> jsonPairs = getJSONPairs(jsonStream.str());
+            
+            id = std::stoul(jsonPairs.at("ReaderID"));
+            
+            fileConfig.close();
+            
+            return id;
+        }
+    }
+    
+    // Send a ReaderID request to the ThermoTrack_API_BLE_General Web API.
+    
+    std::string uri = "/api/blereaders/" + getMACAddress();
+    
+    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 1);
+    
+    // Write the ReaderID response to the config file.
+    
+    if ((response.statusCode == 200) && (response.contentLength > 0))
+    {
+        id = std::stoul(std::string(response.content, response.content + response.contentLength));
+            
+        std::ofstream fileConfig("//home/pi/CONFIG/RPi_BLE_Scanner.config");
+            
+        fileConfig << "{ ReaderID: " << id << " }";
+    }
+    
+    return id;
+}
+
+HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInSec) const
+{
+    HTTPResponse response;
+    
+    unsigned char responseBuffer[HTTP_REQUEST_LENGTH_MAX];
+    
+    long int responseBufferLength = -1;
+    
+    HTTPRequest_POST message(uri, servername + ":" + port, "close", "application/json");
+            
+    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+            
+    unsigned long int bufferLength = message.serialise(buffer, sizeof(buffer));
+    
+    try
+    {
+        unsigned long int sessionID = _networkControllerPtr->connectToServer(servername, port);
+                
+        _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+                
+        std::this_thread::sleep_for(std::chrono::seconds(responseWaitInSec));
+        
+        responseBufferLength = _networkControllerPtr->receiveBufferWithSession(sessionID, responseBuffer, HTTP_REQUEST_LENGTH_MAX);
+                
+        _networkControllerPtr->disconnectFromServer(sessionID);
+    }
+            
+    catch (const std::exception& e)
+    {
+        logToFileWithSubdirectory(e, "Network");
+    }
+    
+    if (responseBufferLength > 0)
+        response.deserialise(responseBuffer, responseBufferLength);
+    
+    return response;
+}
+
+HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInSec) const
+{
+    HTTPResponse response;
+    
+    unsigned char responseBuffer[HTTP_REQUEST_LENGTH_MAX];
+    
+    long int responseBufferLength = -1;
+    
+    HTTPRequest_POST message(uri, servername + ":" + port, "close", "application/json");
+    
+    unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
+    
+    unsigned long int bufferLength = body.length();
+    
+    std::memcpy(static_cast<void*>(buffer), static_cast<const void*>(body.c_str()), bufferLength);
+    
+    message.setContent(buffer, bufferLength);
+    
+    std::memset(static_cast<void*>(buffer), 0, bufferLength);
+    
+    bufferLength = message.serialise(buffer, sizeof(buffer));
+    
+    try
+    {
+        unsigned long int sessionID = _networkControllerPtr->connectToServer(servername, port);
+                
+        _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
+                
+        std::this_thread::sleep_for(std::chrono::seconds(responseWaitInSec));
+        
+        responseBufferLength = _networkControllerPtr->receiveBufferWithSession(sessionID, responseBuffer, HTTP_REQUEST_LENGTH_MAX);
+                
+        _networkControllerPtr->disconnectFromServer(sessionID);
+    }
+            
+    catch (const std::exception& e)
+    {
+        logToFileWithSubdirectory(e, "Network");
+    }
+    
+    if (responseBufferLength > 0)
+        response.deserialise(responseBuffer, responseBufferLength);
+    
+    return response;
+}
+
+bool BaseController_RPi::fileExists(const std::string directoryName, const std::string fileName)
+{
+    bool fileExists = false;
+    
+    DIR* directoryPtr = opendir(directoryName.c_str());
+    
+    if (directoryPtr != nullptr)
+    {      
+        struct dirent* directoryEntryPtr = readdir(directoryPtr);
+        
+        while (directoryEntryPtr != nullptr)
+        {
+            std::string fileNamTemp = std::string(directoryEntryPtr->d_name);
+            
+            if (fileNamTemp == fileName)
+            {
+                fileExists = true;
+                
+                break;
+            }
+            
+            directoryEntryPtr = readdir(directoryPtr);
+        }
+        
+        closedir(directoryPtr);
+    }
+    
+    return fileExists;
+}
+
+void BaseController_RPi::logToFileWithSubdirectory(const std::exception& e, const std::string subdirectoryName)
+{
+    std::stringstream fileLogNameStream;
+        
+    fileLogNameStream << "//home/pi/LOGS/RPi_BLE_Scanner/" << subdirectoryName;
+    
+    umask(0);
+    mkdir("//home/pi/LOGS", 0755);
+    mkdir("//home/pi/LOGS/RPi_BLE_Scanner", 0755);
+    mkdir(fileLogNameStream.str().c_str(), 0755);
+        
+    fileLogNameStream << "/" << getTimeString_Now("%F_%T") << ".log";
+        
+    std::ofstream fileLog(fileLogNameStream.str());
+    
+    if (fileLog.is_open())
+        fileLog << e.what() << std::endl;
+        
+    fileLog.close();
 }
 
 short int BaseController_RPi::getTemperature(const std::string temperatureString)
@@ -441,7 +574,7 @@ std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(co
             keyStream >> key;
         }
         
-        std::string value = jsonPairCurrent.substr(indexColon);
+        std::string value = jsonPairCurrent.substr(indexColon + 1);
         
         if (value.find('"') != std::string::npos)
         {
@@ -466,7 +599,55 @@ std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(co
     return jsonPairs;
 }
 
-// The "isBase64" and "base64Decode" functions were based off of 3rd-party source code (since altered), distributed under the following license:
+std::string BaseController_RPi::getMACAddress(void)
+{
+    std::string addressMAC = "";
+    
+    std::ifstream fileMACAddress("//sys/class/net/eth0/address");
+    
+    if (fileMACAddress.is_open())
+        fileMACAddress >> addressMAC;
+    
+    fileMACAddress.close();
+    
+    std::transform(addressMAC.begin(), addressMAC.end(), addressMAC.begin(),::tolower);
+    
+    addressMAC.erase(std::remove(addressMAC.begin(), addressMAC.end(), ':'), addressMAC.end());
+    
+    return addressMAC;
+}
+
+unsigned long int BaseController_RPi::getTimeRaw_Now(void)
+{   
+    time_t timeRaw;
+            
+    std::time(&timeRaw);
+            
+    struct tm timeInfo = *std::localtime(&timeRaw);
+    
+    return timeRaw;
+}
+
+std::string BaseController_RPi::getTimeString_Now(const std::string format)
+{
+    std::string timeString = "";
+    
+    time_t timeRaw;
+            
+    std::time(&timeRaw);
+            
+    struct tm timeInfo = *std::localtime(&timeRaw);
+            
+    char timeBuffer[20];
+            
+    std::strftime(timeBuffer, 20, format.c_str(), &timeInfo);
+    
+    timeString = std::string(timeBuffer);
+    
+    return timeString;
+}
+
+// The "base64Decode" function is based off of 3rd-party source code (since altered), distributed under the following license:
 
 /* 
    base64.cpp and base64.h
@@ -495,14 +676,11 @@ std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(co
 
 */
 
-bool BaseController_RPi::isBase64(const unsigned char inputChar)
-{
-    return (isalnum(inputChar) || (inputChar == '+') || (inputChar == '/'));
-}
-
 std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength)
-{    
+{
     std::string decodedString;
+    
+    const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     
     unsigned char temp1[4];
     unsigned char temp2[3];
@@ -514,17 +692,17 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     // Handle data in sets of 4.
     
     unsigned long int currentLength = bufferLength;
+    
+    char currentChar = inputBuffer[index];
 
-    while ((currentLength--) && (inputBuffer[index] != '=') && (isBase64(inputBuffer[index])))
+    while ((currentLength--) && ((isalnum(currentChar)) || (currentChar == '+') || (currentChar == '/')))
     {       
         temp1[i++] = inputBuffer[index];
-        
-        ++index;
         
         if (i == 4)
         {      
             for (i = 0; i < 4; ++i)
-                temp1[i] = _base64Chars.find(temp1[i]);
+                temp1[i] = base64Chars.find(temp1[i]);
 
             temp2[0] = (temp1[0] << 2) + ((temp1[1] & 0x30) >> 4);
             temp2[1] = ((temp1[1] & 0xf) << 4) + ((temp1[2] & 0x3c) >> 2);
@@ -535,6 +713,8 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
         
             i = 0;
         }
+        
+        currentChar = inputBuffer[++index];
     }
     
     // Handle an incomplete final set (>4).
@@ -545,7 +725,7 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
             temp1[j] = 0;
 
         for (unsigned char j = 0; j < 4; ++j)
-            temp1[j] = _base64Chars.find(temp1[j]);
+            temp1[j] = base64Chars.find(temp1[j]);
         
         temp2[0] = (temp1[0] << 2) + ((temp1[1] & 0x30) >> 4);
         temp2[1] = ((temp1[1] & 0xf) << 4) + ((temp1[2] & 0x3c) >> 2);
@@ -556,35 +736,4 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     }
 
     return decodedString;
-}
-
-void BaseController_RPi::logToFileWithSubdirectory(const std::exception& e, std::string subdirectoryName)
-{
-    std::stringstream fileLogNameStream;
-        
-    fileLogNameStream << "//home/pi/LOGS/RPi_BLE_Scanner/" << subdirectoryName;
-    
-    umask(0);
-    mkdir("//home/pi/LOGS", 0755);
-    mkdir("//home/pi/LOGS/RPi_BLE_Scanner", 0755);
-    mkdir(fileLogNameStream.str().c_str(), 0755);
-    
-    time_t timeRaw;
-            
-    std::time(&timeRaw);
-            
-    struct tm timeInfo = *std::localtime(&timeRaw);
-            
-    char time[20];
-            
-    std::strftime(time, 20, "%F_%T", &timeInfo);
-        
-    fileLogNameStream << "/" << time << ".log";
-        
-    std::ofstream fileLog(fileLogNameStream.str());
-    
-    if (fileLog.is_open())
-        fileLog << e.what() << std::endl;
-        
-    fileLog.close();
 }

@@ -79,6 +79,7 @@
     <ClInclude Include="HTTPRequest.h" />
     <ClInclude Include="HTTPRequest_GET.h" />
     <ClInclude Include="HTTPRequest_POST.h" />
+    <ClInclude Include="HTTPResponse.h" />
     <ClInclude Include="PacketBLE.h" />
     <ClInclude Include="SessionInfo.h" />
     <ClInclude Include="UARTController.h" />

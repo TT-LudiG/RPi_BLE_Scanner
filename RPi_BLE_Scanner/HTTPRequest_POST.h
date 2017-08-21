@@ -12,25 +12,24 @@
 
 class HTTPRequest_POST: public HTTPRequest
 {
-private:
-    const std::string _contentType;
-    unsigned long int _contentLength;
-    
-    unsigned char _content[HTTP_REQUEST_POST_CONTENT_LENGTH_MAX];
-    
 public:
+    const std::string contentType;
+    unsigned long int contentLength;
+    
+    unsigned char content[HTTP_REQUEST_POST_CONTENT_LENGTH_MAX];
+    
     HTTPRequest_POST(const std::string requestURI, const std::string host, const std::string connection, const std::string contentType):
         HTTPRequest("POST", requestURI, host, connection),
-        _contentType(contentType),
-        _contentLength(0) {}
+        contentType(contentType),
+        contentLength(0) {}
     
     bool setContent(const unsigned char* inputBuffer, const unsigned long int bufferLength)
     {
         if (bufferLength <= HTTP_REQUEST_POST_CONTENT_LENGTH_MAX)
         {
-            _contentLength = bufferLength;
+            contentLength = bufferLength;
             
-            std::memcpy(static_cast<void*>(_content), static_cast<const void*>(inputBuffer), bufferLength);
+            std::memcpy(static_cast<void*>(content), static_cast<const void*>(inputBuffer), bufferLength);
             
             return true;
         }
@@ -42,13 +41,13 @@ public:
     {
         std::stringstream outputStream;
         
-        outputStream << _method << " " << _requestURI << " " << _versionHTTP << "\r\n";
-        outputStream << "Host: " << _host << "\r\n";
-        outputStream << "Connection: " << _connection << "\r\n";
-        outputStream << "Content-Type: " << _contentType << "\r\n";
-        outputStream << "Content-Length: " << _contentLength << "\r\n";
+        outputStream << method << " " << requestURI << " " << versionHTTP << "\r\n";
+        outputStream << "Host: " << host << "\r\n";
+        outputStream << "Connection: " << connection << "\r\n";
+        outputStream << "Content-Type: " << contentType << "\r\n";
+        outputStream << "Content-Length: " << contentLength << "\r\n";
         outputStream << "\r\n";
-        outputStream << _content;
+        outputStream << content;
         
         std::string outputString = outputStream.str();
         

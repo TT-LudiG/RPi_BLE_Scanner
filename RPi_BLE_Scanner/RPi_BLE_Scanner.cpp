@@ -4,21 +4,17 @@
 
 #include "BaseController_RPi.h"
 
-#define SERVERNAME "41.185.23.172"
-#define PORT "49997"
-
-#define CONDUITNAME "RPi-Dev"
-
+#define SERVERNAME "127.0.0.1"
+#define PORT_GENERAL "49998"
+#define PORT_TEMPERATURE "49997"
 #define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
 {  
     std::string servername = SERVERNAME;
-    std::string port = PORT;
-    
-    std::string conduitName = CONDUITNAME;
-    
-    unsigned long int delaySenderLoopInSec = DELAY_SENDER_LOOP_IN_SEC;
+    std::string port_general = PORT_GENERAL;
+    std::string port_temperature = PORT_TEMPERATURE;    
+    unsigned long int delay_sender_loop_in_sec = DELAY_SENDER_LOOP_IN_SEC;
     
     std::string currentParam;
     
@@ -36,56 +32,24 @@ int main(int argc, char* argv[])
                 continue;
             }
             
-            if (currentParam == "-s")
+            std::size_t indexEqualsChar = currentParam.find('=');
+            
+            if (indexEqualsChar != std::string::npos)
             {
-                try
-                {
-                    servername = std::string(argv[i + 1]);
-                }
+                std::string token = currentParam.substr(0, indexEqualsChar);
+                std::string value = currentParam.substr(indexEqualsChar + 1);
                 
-                catch (...)
-                {
-                    servername = SERVERNAME;
-                }
-            }
-            
-            else if (currentParam == "-p")
-            {             
-                try
-                {
-                    port = std::string(argv[i + 1]);
-                }
+                if (token == "-servername")
+                    servername = value;
                 
-                catch (...)
-                {
-                    port = PORT;
-                }
-            }
-            
-            else if (currentParam == "-i")
-            {             
-                try
-                {
-                    conduitName = std::string(argv[i + 1]);
-                }
+                else if (token == "-port_general")
+                    port_general = value;
                 
-                catch (...)
-                {
-                    conduitName = CONDUITNAME;
-                }
-            }
-            
-            else if (currentParam == "-t")
-            {             
-                try
-                {
-                    delaySenderLoopInSec = std::stoul(std::string(argv[i + 1]));
-                }
+                else if (token == "-port_temperature")
+                    port_temperature = value;
                 
-                catch (...)
-                {
-                    delaySenderLoopInSec = DELAY_SENDER_LOOP_IN_SEC;
-                }
+                else if (token == "-delay_sender_loop_in_sec")
+                    delay_sender_loop_in_sec = std::stoul(value);
             }
         }
     }
@@ -94,7 +58,7 @@ int main(int argc, char* argv[])
     
     try
     {
-        baseControllerPtr = new BaseController_RPi(servername, port, conduitName, delaySenderLoopInSec);
+        baseControllerPtr = new BaseController_RPi(servername, port_general, port_temperature, delay_sender_loop_in_sec);
     }
     
     catch (const std::exception& e)
