@@ -36,9 +36,7 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     unsigned long int status = getaddrinfo(servername.c_str(), port.c_str(), nullptr, &result);
     
     if (status != 0)
-    {
-        freeaddrinfo(result);
-        
+    {       
         NetworkExceptions_RPi::ServerLookupException e(servername, std::string(gai_strerror(status)));
         throw e;
     }
@@ -49,6 +47,16 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     // Create the socket.
     
     socketHandle = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    
+    if (socketHandle < 0)
+    {       
+        NetworkExceptions_RPi::SocketCreateException e(socketHandle, std::string(std::strerror(errno)));
+        throw e;
+    }
+    
+    // Free the memory allocated for the "addrinfo" struct.
+    
+    freeaddrinfo(result);
     
     // Set the socket timeout period.
     
@@ -61,6 +69,8 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
 
     if (setsockopt(socketHandle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout)) < 0)
     {
+        close(socketHandle);
+        
         NetworkExceptions_RPi::SocketSetOptionException e(socketHandle, "SO_SNDTIMEO", std::string(std::strerror(errno)));
         throw e;
     }
@@ -69,15 +79,9 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     
     if (setsockopt(socketHandle, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout)) < 0)
     {
+        close(socketHandle);
+        
         NetworkExceptions_RPi::SocketSetOptionException e(socketHandle, "SO_RCVTIMEO", std::string(std::strerror(errno)));
-        throw e;
-    }
-    
-    freeaddrinfo(result);
-    
-    if (socketHandle < 0)
-    {       
-        NetworkExceptions_RPi::SocketCreateException e(socketHandle, std::string(std::strerror(errno)));
         throw e;
     }
 	

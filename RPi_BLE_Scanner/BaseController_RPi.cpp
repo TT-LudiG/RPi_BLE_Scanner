@@ -177,7 +177,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             if (_isDone)
                 return;
             
-            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F_%T") << std::endl;
+            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F %T") << std::endl;
             
             std::stringstream bodyStream;
             
