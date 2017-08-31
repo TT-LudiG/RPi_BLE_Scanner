@@ -63,8 +63,6 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     _isWaiting = false;
     _hasWoken = false;
     _loopsCount = 0;
-    
-    _id = getID();
 }
 
 BaseController_RPi::~BaseController_RPi(void)
@@ -156,56 +154,68 @@ void BaseController_RPi::sendDataPeriodically(void)
     
     lock.unlock();
     
+    // First attempt to get the ID.
+    
+    _id = getID();
+    
     while (!_isDone)
-    {  
-        // Send an alive status notification to the ThermoTrack_API_BLE_General Web API.
+    {
+        // Subsequent attempts to get the ID, if not yet found.
         
-        {
-            std::stringstream bodyStream;
+        if (_id == 0)
+            _id = getID();
         
-            bodyStream << "{\"ReaderID\": " << _id << "}";
+        else
+        {        
+            // Send an alive status notification to the ThermoTrack_API_BLE_General Web API.
         
-            sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1);
-        }
+            {
+                std::stringstream bodyStream;
         
-        // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
+                bodyStream << "{\"ReaderID\": " << _id << "}";
         
-        std::map<std::string, PacketBLE*>::const_iterator it;
+                sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1);
+            }
         
-        for (it = _beacons.begin(); it != _beacons.end(); ++it)
-        {            
-            if (_isDone)
-                return;
+            // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
+        
+            std::map<std::string, PacketBLE*>::const_iterator it;
+        
+            for (it = _beacons.begin(); it != _beacons.end(); ++it)
+            {            
+                if (_isDone)
+                    return;
             
-            std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F %T") << std::endl;
+                std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F %T") << std::endl;
             
-            std::stringstream bodyStream;
+                std::stringstream bodyStream;
             
-            bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
+                bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
             
-            sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1);
+                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1);
             
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
-            ++_loopsCount;
+                ++_loopsCount;
             
-            _isWaiting = true;
+                _isWaiting = true;
             
-            lock.lock();
+                lock.lock();
 
-            while (!_isReady)
-                _cv.wait(lock);
+                while (!_isReady)
+                    _cv.wait(lock);
             
-            _hasWoken = true;
+                _hasWoken = true;
             
-            lock.unlock();
+                lock.unlock();
+            }
+        
+            for (it = _beacons.begin(); it != _beacons.end(); ++it)
+                if (it->second != nullptr)
+                    delete it->second;
+        
+            _beacons.clear();
         }
-        
-        for (it = _beacons.begin(); it != _beacons.end(); ++it)
-            if (it->second != nullptr)
-                delete it->second;
-        
-        _beacons.clear();
         
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         
@@ -399,7 +409,7 @@ HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername
     
     long int responseBufferLength = -1;
     
-    HTTPRequest_POST message(uri, servername + ":" + port, "close", "application/json");
+    HTTPRequest_GET message(uri, servername + ":" + port, "close", "application/json");
             
     unsigned char buffer[HTTP_REQUEST_LENGTH_MAX];
             

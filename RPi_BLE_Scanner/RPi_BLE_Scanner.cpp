@@ -4,7 +4,7 @@
 
 #include "BaseController_RPi.h"
 
-#define SERVERNAME "127.0.0.1"
+#define SERVERNAME "41.185.23.172"
 #define PORT_GENERAL "49998"
 #define PORT_TEMPERATURE "49997"
 #define DELAY_SENDER_LOOP_IN_SEC 300;
@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 {  
     std::string servername = SERVERNAME;
     std::string port_general = PORT_GENERAL;
-    std::string port_temperature = PORT_TEMPERATURE;    
+    std::string port_temperature = PORT_TEMPERATURE;
     unsigned long int delay_sender_loop_in_sec = DELAY_SENDER_LOOP_IN_SEC;
     
     std::string currentParam;
