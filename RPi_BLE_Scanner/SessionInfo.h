@@ -1,8 +1,6 @@
 #ifndef SESSIONINFO_H
 #define SESSIONINFO_H
 
-#include <string>
-
 #include <netinet/in.h>
 
 struct SessionInfo

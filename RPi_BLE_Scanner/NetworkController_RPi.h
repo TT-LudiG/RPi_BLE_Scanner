@@ -1,6 +1,7 @@
 #ifndef NETWORKCONTROLLER_H
 #define NETWORKCONTROLLER_H
 
+#include <string>
 #include <unordered_map>
 
 #include "SessionInfo.h"

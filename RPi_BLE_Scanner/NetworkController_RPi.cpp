@@ -19,8 +19,13 @@ NetworkController_RPi::~NetworkController_RPi(void)
 {
     std::unordered_map<unsigned long int, SessionInfo*>::const_iterator it;
     
-    for (it = _sessions.begin(); it != _sessions.end(); ++it)
+    for (it = _sessions.begin(); it != _sessions.end(); ++it)       
+    {
         disconnectFromServer(it->first);
+        
+        if (it->second != nullptr)
+            delete it->second;
+    }
 }
 
 unsigned long int NetworkController_RPi::connectToServer(const std::string servername, const std::string port)
