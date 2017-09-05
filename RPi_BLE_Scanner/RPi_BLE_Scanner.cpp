@@ -4,9 +4,9 @@
 
 #include "BaseController_RPi.h"
 
-#define SERVERNAME "41.185.23.172"
-#define PORT_GENERAL "49998"
-#define PORT_TEMPERATURE "49997"
+#define SERVERNAME "vpn-wa-a.thermotrack.co.za"
+#define PORT_GENERAL "49996"
+#define PORT_TEMPERATURE "49995"
 #define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
