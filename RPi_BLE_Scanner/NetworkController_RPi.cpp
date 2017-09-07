@@ -13,13 +13,14 @@
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
 
-NetworkController_RPi::NetworkController_RPi(void): _nextSessionID(0) {}
+NetworkController_RPi::NetworkController_RPi(void):
+    _nextSessionID(0) {}
 
 NetworkController_RPi::~NetworkController_RPi(void)
 {
     std::unordered_map<unsigned long int, SessionInfo*>::const_iterator it;
     
-    for (it = _sessions.begin(); it != _sessions.end(); ++it)       
+    for (it = _sessions.begin(); it != _sessions.end(); ++it)
     {
         disconnectFromServer(it->first);
         
@@ -63,7 +64,7 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     
     freeaddrinfo(result);
     
-    // Set the socket timeout period.
+    // Set the socket timeout period (for the server-connect operation).
     
     struct timeval timeout;
     
@@ -102,15 +103,40 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
         throw e;
     }
     
+    // Set the socket timeout period (for subsequent read/write operations).
+    
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1;
+    
+    // REINTERPRET_CAST!
+
+    if (setsockopt(socketHandle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout)) < 0)
+    {
+        close(socketHandle);
+        
+        NetworkExceptions_RPi::SocketSetOptionException e(socketHandle, "SO_SNDTIMEO", std::string(std::strerror(errno)));
+        throw e;
+    }
+    
+    // REINTERPRET_CAST!
+    
+    if (setsockopt(socketHandle, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout)) < 0)
+    {
+        close(socketHandle);
+        
+        NetworkExceptions_RPi::SocketSetOptionException e(socketHandle, "SO_RCVTIMEO", std::string(std::strerror(errno)));
+        throw e;
+    }
+    
     _sessions.insert(std::pair<unsigned long int, SessionInfo*>(_nextSessionID, new SessionInfo(socketHandle, *socketAddress)));
     
     return _nextSessionID++;
 }
 
 void NetworkController_RPi::disconnectFromServer(const unsigned long int sessionID)
-{
+{ 
     if (_sessions.count(sessionID) > 0)
-    {
+    {      
         close(_sessions.at(sessionID)->SocketHandle);
         
         delete _sessions.at(sessionID);
@@ -130,9 +156,15 @@ long int NetworkController_RPi::sendBufferWithSession(const unsigned long int se
         bytesCount = write(socketHandle, static_cast<const void*>(inputBuffer), bufferLength);
         
         if (bytesCount < 0)
-        {
-            NetworkExceptions_RPi::SocketWriteException e(socketHandle, std::string(std::strerror(errno)));
-            throw e;
+        {          
+            if (errno == EAGAIN)
+                bytesCount = 0;
+            
+            else
+            {
+                NetworkExceptions_RPi::SocketWriteException e(socketHandle, std::string(std::strerror(errno)));
+                throw e;
+            }
         }
     }
     
@@ -151,8 +183,14 @@ long int NetworkController_RPi::receiveBufferWithSession(const unsigned long int
 	
         if (bytesCount < 0)
         {
-            NetworkExceptions_RPi::SocketReadException e(socketHandle, std::string(std::strerror(errno)));
-            throw e;
+            if (errno == EAGAIN)
+                bytesCount = 0;
+            
+            else
+            {
+                NetworkExceptions_RPi::SocketReadException e(socketHandle, std::string(std::strerror(errno)));
+                throw e;
+            }
         }
     }
     
