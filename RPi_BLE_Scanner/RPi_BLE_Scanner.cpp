@@ -10,7 +10,7 @@
 #define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
-{  
+{
     std::string servername = SERVERNAME;
     std::string port_general = PORT_GENERAL;
     std::string port_temperature = PORT_TEMPERATURE;

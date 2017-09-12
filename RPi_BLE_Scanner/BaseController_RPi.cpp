@@ -18,7 +18,9 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     _servername(servername),
     _port_general(port_general),
     _port_temperature(port_temperature),
-    _delay_sender_loop_in_sec(delay_sender_loop_in_sec)
+    _delay_sender_loop_in_sec(delay_sender_loop_in_sec),
+    _networkControllerPtr(nullptr),
+    _bluetoothControllerPtr(nullptr)
 {
     try
     {
@@ -40,18 +42,6 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     catch (const std::exception& e)
     {
         logToFileWithSubdirectory(e, "Bluetooth");
-        
-        throw e;
-    }
-    
-    try
-    {
-        _gsmControllerPtr = nullptr;
-    }
-    
-    catch (const std::exception& e)
-    {
-        logToFileWithSubdirectory(e, "GSM");
         
         throw e;
     }
@@ -91,9 +81,6 @@ BaseController_RPi::~BaseController_RPi(void)
     
     if (_bluetoothControllerPtr != nullptr)
         delete _bluetoothControllerPtr;
-    
-    if (_gsmControllerPtr != nullptr)
-        delete _gsmControllerPtr;
 }
 
 void BaseController_RPi::monitorSenderThread(void)
@@ -174,7 +161,7 @@ void BaseController_RPi::sendDataPeriodically(void)
         
                 bodyStream << "{\"ReaderID\": " << _id << "}";
         
-                sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1);
+                sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1000);
             }
         
             // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
@@ -192,7 +179,7 @@ void BaseController_RPi::sendDataPeriodically(void)
             
                 bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
             
-                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1);
+                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1000);
             
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             
@@ -385,7 +372,7 @@ unsigned long int BaseController_RPi::getID(void) const
     
     std::string uri = "/api/blereaders/" + getMACAddress();
     
-    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 1);
+    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 1000);
     
     // Write the ReaderID response to the config file.
     
@@ -401,7 +388,7 @@ unsigned long int BaseController_RPi::getID(void) const
     return id;
 }
 
-HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInSec) const
+HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInMs) const
 {
     HTTPResponse response;
     
@@ -421,7 +408,7 @@ HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername
                 
         _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
                 
-        std::this_thread::sleep_for(std::chrono::seconds(responseWaitInSec));
+        std::this_thread::sleep_for(std::chrono::milliseconds(responseWaitInMs));
         
         responseBufferLength = _networkControllerPtr->receiveBufferWithSession(sessionID, responseBuffer, HTTP_REQUEST_LENGTH_MAX);
                 
@@ -439,7 +426,7 @@ HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername
     return response;
 }
 
-HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInSec) const
+HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInMs) const
 {
     HTTPResponse response;
     
@@ -467,7 +454,7 @@ HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servernam
                 
         _networkControllerPtr->sendBufferWithSession(sessionID, buffer, bufferLength);
                 
-        std::this_thread::sleep_for(std::chrono::seconds(responseWaitInSec));
+        std::this_thread::sleep_for(std::chrono::milliseconds(responseWaitInMs));
         
         responseBufferLength = _networkControllerPtr->receiveBufferWithSession(sessionID, responseBuffer, HTTP_REQUEST_LENGTH_MAX);
                 

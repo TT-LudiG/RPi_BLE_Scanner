@@ -19,7 +19,6 @@ class BaseController_RPi
 private:
     NetworkController_RPi* _networkControllerPtr;
     BluetoothController* _bluetoothControllerPtr;
-    GSMController* _gsmControllerPtr;
     
     const std::string _servername;
     const std::string _port_general;
@@ -43,8 +42,8 @@ private:
     
     unsigned long int getID(void) const;
     
-    HTTPResponse sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInSec) const;
-    HTTPResponse sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInSec) const;
+    HTTPResponse sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInMs) const;
+    HTTPResponse sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInMs) const;
     
     static bool fileExists(const std::string directoryName, const std::string fileName);
     

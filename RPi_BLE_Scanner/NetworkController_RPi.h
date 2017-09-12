@@ -19,6 +19,7 @@ public:
     
     unsigned long int connectToServer(const std::string servername, const std::string port);
     void disconnectFromServer(const unsigned long int sessionID);
+    void disconnectFromServerAll(void);
 	
     long int sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const;    
     long int receiveBufferWithSession(const unsigned long int sessionID, unsigned char* outputBuffer, const unsigned long int bufferLength) const;
