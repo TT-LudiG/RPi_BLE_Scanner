@@ -29,7 +29,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Network");
+        logToFileWithSubdirectory(e.what(), "Network");
         
         throw e;
     }
@@ -41,7 +41,7 @@ BaseController_RPi::BaseController_RPi(const std::string servername, const std::
     
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Bluetooth");
+        logToFileWithSubdirectory(e.what(), "Bluetooth");
         
         throw e;
     }
@@ -75,7 +75,7 @@ BaseController_RPi::~BaseController_RPi(void)
     
         catch (const std::exception& e)
         {
-            logToFileWithSubdirectory(e, "Bluetooth");
+            logToFileWithSubdirectory(e.what(), "Bluetooth");
         }
     }
     
@@ -114,7 +114,7 @@ void BaseController_RPi::monitorSenderThread(void)
             }
             
             else
-            {             
+            {
                 // All client-listener threads wait for _delaySenderLoopInSec seconds (interruptible).
                 
                 while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count() < _delay_sender_loop_in_sec)
@@ -155,45 +155,42 @@ void BaseController_RPi::sendDataPeriodically(void)
         else
         {        
             // Send an alive status notification to the ThermoTrack_API_BLE_General Web API.
-        
-            {
-                std::stringstream bodyStream;
-        
-                bodyStream << "{\"ReaderID\": " << _id << "}";
-        
-                sendPOSTToServerURI(_servername, _port_general, "/api/blereaders", bodyStream.str(), 1000);
-            }
+            
+            std::stringstream requestURIStream;
+            requestURIStream << "/api/blereaders/" << _id;
+            
+            sendPOSTToServerURI(_servername, _port_general, requestURIStream.str(), "", 2000);
         
             // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
         
             std::map<std::string, PacketBLE*>::const_iterator it;
         
             for (it = _beacons.begin(); it != _beacons.end(); ++it)
-            {            
+            {
                 if (_isDone)
                     return;
-            
+                
                 std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F %T") << std::endl;
-            
+                
                 std::stringstream bodyStream;
-            
+                
                 bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
-            
-                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 1000);
-            
+                
+                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 2000);
+                
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            
+                
                 ++_loopsCount;
-            
+                
                 _isWaiting = true;
-            
+                
                 lock.lock();
-
+                
                 while (!_isReady)
                     _cv.wait(lock);
-            
+                
                 _hasWoken = true;
-            
+                
                 lock.unlock();
             }
         
@@ -232,7 +229,7 @@ void BaseController_RPi::listenForBLEDevices(void)
     
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Bluetooth");
+        logToFileWithSubdirectory(e.what(), "Bluetooth");
     }
 	
     while (!_isDone)
@@ -328,7 +325,7 @@ void BaseController_RPi::listenForBLEDevices(void)
     
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Bluetooth");
+        logToFileWithSubdirectory(e.what(), "Bluetooth");
     }
 }
 
@@ -372,16 +369,16 @@ unsigned long int BaseController_RPi::getID(void) const
     
     std::string uri = "/api/blereaders/" + getMACAddress();
     
-    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 1000);
+    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 2000);
     
     // Write the ReaderID response to the config file.
     
     if ((response.statusCode == 200) && (response.contentLength > 0))
     {
         id = std::stoul(std::string(response.content, response.content + response.contentLength));
-            
+        
         std::ofstream fileConfig("//home/pi/CONFIG/RPi_BLE_Scanner.config");
-            
+        
         fileConfig << "{ ReaderID: " << id << " }";
     }
     
@@ -417,7 +414,7 @@ HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername
             
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Network");
+        logToFileWithSubdirectory(e.what(), "Network");
     }
     
     if (responseBufferLength > 0)
@@ -463,7 +460,7 @@ HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servernam
             
     catch (const std::exception& e)
     {
-        logToFileWithSubdirectory(e, "Network");
+        logToFileWithSubdirectory(e.what(), "Network");
     }
     
     if (responseBufferLength > 0)
@@ -472,11 +469,11 @@ HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servernam
     return response;
 }
 
-bool BaseController_RPi::fileExists(const std::string directoryName, const std::string fileName)
+bool BaseController_RPi::fileExists(const std::string directoryPath, const std::string fileName)
 {
     bool fileExists = false;
     
-    DIR* directoryPtr = opendir(directoryName.c_str());
+    DIR* directoryPtr = opendir(directoryPath.c_str());
     
     if (directoryPtr != nullptr)
     {      
@@ -502,24 +499,24 @@ bool BaseController_RPi::fileExists(const std::string directoryName, const std::
     return fileExists;
 }
 
-void BaseController_RPi::logToFileWithSubdirectory(const std::exception& e, const std::string subdirectoryName)
+void BaseController_RPi::logToFileWithSubdirectory(const std::string message, const std::string subdirectoryName)
 {
     std::stringstream fileLogNameStream;
-        
+    
     fileLogNameStream << "//home/pi/LOGS/RPi_BLE_Scanner/" << subdirectoryName;
     
     umask(0);
     mkdir("//home/pi/LOGS", 0755);
     mkdir("//home/pi/LOGS/RPi_BLE_Scanner", 0755);
     mkdir(fileLogNameStream.str().c_str(), 0755);
-        
+    
     fileLogNameStream << "/" << getTimeString_Now("%F_%T") << ".log";
-        
+    
     std::ofstream fileLog(fileLogNameStream.str());
     
     if (fileLog.is_open())
-        fileLog << e.what() << std::endl;
-        
+        fileLog << message << std::endl;
+    
     fileLog.close();
 }
 

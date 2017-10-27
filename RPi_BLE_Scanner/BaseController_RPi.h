@@ -47,7 +47,7 @@ private:
     
     static bool fileExists(const std::string directoryName, const std::string fileName);
     
-    static void logToFileWithSubdirectory(const std::exception& e, const std::string subdirectoryName);
+    static void logToFileWithSubdirectory(const std::string message, const std::string subdirectoryName);
     
     static short int getTemperature(const std::string temperatureString);
     static std::unordered_map<std::string, std::string> getJSONPairs(const std::string jsonString);    
