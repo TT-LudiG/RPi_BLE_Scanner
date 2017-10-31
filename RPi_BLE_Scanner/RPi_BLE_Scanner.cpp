@@ -4,16 +4,18 @@
 
 #include "BaseController_RPi.h"
 
-#define SERVERNAME "vpn-wa-a.thermotrack.co.za"
+#define SERVERNAME_GENERAL "vpn-wa-a.thermotrack.co.za"
+#define SERVERNAME_DATA "whizzdev.dyndns.org"
 #define PORT_GENERAL "49996"
-#define PORT_TEMPERATURE "49995"
+#define PORT_DATA "9062"
 #define DELAY_SENDER_LOOP_IN_SEC 300;
 
 int main(int argc, char* argv[])
 {
-    std::string servername = SERVERNAME;
+    std::string servername_general = SERVERNAME_GENERAL;
+    std::string servername_data = SERVERNAME_DATA;
     std::string port_general = PORT_GENERAL;
-    std::string port_temperature = PORT_TEMPERATURE;
+    std::string port_data = PORT_DATA;
     unsigned long int delay_sender_loop_in_sec = DELAY_SENDER_LOOP_IN_SEC;
     
     std::string currentParam;
@@ -39,14 +41,17 @@ int main(int argc, char* argv[])
                 std::string token = currentParam.substr(0, indexEqualsChar);
                 std::string value = currentParam.substr(indexEqualsChar + 1);
                 
-                if (token == "-servername")
-                    servername = value;
+                if (token == "-servername_general")
+                    servername_general = value;
+                
+                else if (token == "-servername_data")
+                    servername_data = value;
                 
                 else if (token == "-port_general")
                     port_general = value;
                 
-                else if (token == "-port_temperature")
-                    port_temperature = value;
+                else if (token == "-port_data")
+                    port_data = value;
                 
                 else if (token == "-delay_sender_loop_in_sec")
                     delay_sender_loop_in_sec = std::stoul(value);
@@ -58,7 +63,7 @@ int main(int argc, char* argv[])
     
     try
     {
-        baseControllerPtr = new BaseController_RPi(servername, port_general, port_temperature, delay_sender_loop_in_sec);
+        baseControllerPtr = new BaseController_RPi(servername_general, servername_data, port_general, port_data, delay_sender_loop_in_sec);
     }
     
     catch (const std::exception& e)

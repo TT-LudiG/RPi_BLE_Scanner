@@ -6,11 +6,10 @@
 struct PacketBLE
 {
 public:
-    long int rssi;
+    float Value;
+    float Battery;
     
-    std::string payload;
-    
-    PacketBLE(long int rssi, std::string payload): rssi(rssi), payload(payload) {}
+    PacketBLE(float value, float battery): Value(value), Battery(battery) {}
     ~PacketBLE() {}
 };
 #endif

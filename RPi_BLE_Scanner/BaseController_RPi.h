@@ -20,9 +20,10 @@ private:
     NetworkController_RPi* _networkControllerPtr;
     BluetoothController* _bluetoothControllerPtr;
     
-    const std::string _servername;
+    const std::string _servername_general;
+    const std::string _servername_data;
     const std::string _port_general;
-    const std::string _port_temperature;
+    const std::string _port_data;
     const unsigned long int _delay_sender_loop_in_sec;
     
     unsigned long int _id;
@@ -58,7 +59,7 @@ private:
     static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
     
 public:
-    BaseController_RPi(const std::string servername, const std::string port_general, const std::string port_temperature, const unsigned long int delay_sender_loop_in_sec);
+    BaseController_RPi(const std::string servername_general, const std::string servername_data, const std::string port_general, const std::string port_data, const unsigned long int delay_sender_loop_in_sec);
     ~BaseController_RPi(void);
     
     void monitorSenderThread(void);

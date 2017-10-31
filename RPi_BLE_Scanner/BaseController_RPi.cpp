@@ -14,10 +14,11 @@
 #include "HTTPRequest_GET.h"
 #include "HTTPRequest_POST.h"
 
-BaseController_RPi::BaseController_RPi(const std::string servername, const std::string port_general, const std::string port_temperature, const unsigned long int delay_sender_loop_in_sec):
-    _servername(servername),
+BaseController_RPi::BaseController_RPi(const std::string servername_general, const std::string servername_data, const std::string port_general, const std::string port_data, const unsigned long int delay_sender_loop_in_sec):
+    _servername_general(servername_general),
+    _servername_data(servername_data),
     _port_general(port_general),
-    _port_temperature(port_temperature),
+    _port_data(port_data),
     _delay_sender_loop_in_sec(delay_sender_loop_in_sec),
     _networkControllerPtr(nullptr),
     _bluetoothControllerPtr(nullptr)
@@ -159,24 +160,24 @@ void BaseController_RPi::sendDataPeriodically(void)
             std::stringstream requestURIStream;
             requestURIStream << "/api/blereaders/" << _id;
             
-            sendPOSTToServerURI(_servername, _port_general, requestURIStream.str(), "", 2000);
-        
+            sendPOSTToServerURI(_servername_general, _port_general, requestURIStream.str(), "", 2000);
+            
             // Send all recently received BLE packets to the ThermoTrack_API_BLE_Temperature Web API.
-        
+            
             std::map<std::string, PacketBLE*>::const_iterator it;
-        
+            
             for (it = _beacons.begin(); it != _beacons.end(); ++it)
             {
                 if (_isDone)
                     return;
                 
-                std::cout << "ID: " << it->first << " | Payload: " << it->second->payload << " | RSSI: " << it->second->rssi << " | Timestamp: " << getTimeString_Now("%F %T") << std::endl;
+                std::string timestamp = getTimeString_Now("%F %T");
                 
+                std::cout << "ID: " << it->first << " | Value: " << it->second->Value << " | Battery: " << it->second->Battery << " | Timestamp: " << timestamp << std::endl;
+            
                 std::stringstream bodyStream;
-                
-                bodyStream << "{\"BeaconID\": \"" << it->first << "\", \"Base64EncodedString\": \"" << it->second->payload << "\", \"RSSI\": " << it->second->rssi << ", \"Timestamp\": " << getTimeRaw_Now() << ", \"ReaderID\": \"" << _id << "\"}";
-                
-                sendPOSTToServerURI(_servername, _port_temperature, "/api/blebeacons", bodyStream.str(), 2000);
+                bodyStream << "{\"BoltIdentifier\":\"" << it->first << "\", \"Battery\":" << it->second->Battery << ", \"Value\":" << it->second->Value << ", \"HostID\":\"0\", \"DateTime\":\"" << timestamp << "\"}";               
+                sendPOSTToServerURI(_servername_data, _port_data, "/api/blebeacons", bodyStream.str(), 2000);
                 
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 
@@ -277,37 +278,37 @@ void BaseController_RPi::listenForBLEDevices(void)
                 
                 std::string manufacturer(manufacturerData, manufacturerData + 3);
                 
-                if (manufacturer == "INO")
+                
+                if (manufacturer == "GMS")
                 {                   
-                    // RSSI is found at the index after the payload.
+                    // Base64-encoded data is found from indices 10-24 (length: 15).
                     
-                    long int rssi = static_cast<long int>(static_cast<signed char>(infoPtr->data[dataLength]));
+                    unsigned char payloadData[15];
                     
-                    // Base64-encoded data is found from indices 10-22 (length: 13).
+                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 15);
                     
-                    unsigned char payloadData[13];
+                    std::string payload = base64Decode(payloadData, 15);
                     
-                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 10), 13);
-                    
-                    std::string payload(payloadData, payloadData + 13);
-
                     char idBuffer[6];
-                    
+                        
                     ba2str(&infoPtr->bdaddr, idBuffer);
-                    
+                        
                     std::string id = idBuffer;
-                    
-                    std::transform(id.begin(), id.end(), id.begin(), ::tolower);
-                    
+                        
                     id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
-                    
+                        
+                    float value = stof(payload.substr(0, 5));
+                    float battery = stof(payload.substr(5, 5));
+                        
                     if (_beacons.count(id) == 0)
-                        _beacons.emplace(id, new PacketBLE(rssi, payload));
+                    {                        
+                        _beacons.emplace(id, new PacketBLE(value, battery));
+                    }
                         
                     else
-                    {
-                        _beacons.at(id)->rssi = rssi;
-                        _beacons.at(id)->payload = payload;
+                    {                          
+                        _beacons.at(id)->Value = value;
+                        _beacons.at(id)->Battery = battery;
                     }
                 }
         
@@ -369,7 +370,7 @@ unsigned long int BaseController_RPi::getID(void) const
     
     std::string uri = "/api/blereaders/" + getMACAddress();
     
-    HTTPResponse response = sendGETToServerURI(_servername, _port_general, uri, 2000);
+    HTTPResponse response = sendGETToServerURI(_servername_general, _port_general, uri, 2000);
     
     // Write the ReaderID response to the config file.
     
