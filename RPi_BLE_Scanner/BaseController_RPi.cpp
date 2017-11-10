@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
@@ -270,35 +271,54 @@ void BaseController_RPi::listenForBLEDevices(void)
                 if (dataLength == 0)
                     continue;
                 
-                // Manufacturer data is found from indices 2-4 (length: 3).
+                std::string manufacturer;
+                std::string payload;
                 
-                unsigned char manufacturerData[3];
+                bool isBreak = false;
                 
-                std::memcpy(static_cast<void*>(manufacturerData), static_cast<const void*>(infoPtr->data + 2), 3);
+                std::stringstream dataStream;
                 
-                std::string manufacturer(manufacturerData, manufacturerData + 3);
+                std::string token = "";
                 
+                for (unsigned long int i = 0; i < dataLength; ++i)
+                {
+                    unsigned char byte = infoPtr->data[i];
+                    
+                    if (std::isprint(byte))
+                    {
+                        token += byte;
+                        
+                        isBreak = true;
+                    }
+                    
+                    else if (isBreak)
+                    {
+                        if (token.length() == 3)
+                            manufacturer = token;
+                        
+                        else
+                            payload = token;
+                        
+                        token = "";
+                        
+                        isBreak = false;
+                    }
+                }
                 
                 if (manufacturer == "GMS")
-                {                   
-                    // Base64-encoded data is found from indices 10-24 (length: 15).
-                    
-                    unsigned char payloadData[15];
-                    
-                    std::memcpy(static_cast<void*>(payloadData), static_cast<const void*>(infoPtr->data + 11), 15);
-                    
-                    std::string payload = base64Decode(payloadData, 15);
+                {
+                    std::string payloadDecoded = base64Decode(payload.substr(1));
                     
                     char idBuffer[6];
                         
                     ba2str(&infoPtr->bdaddr, idBuffer);
                         
                     std::string id = idBuffer;
-                        
+                    
                     id.erase(std::remove(id.begin(), id.end(), ':'), id.end());
                         
-                    float value = stof(payload.substr(0, 5));
-                    float battery = stof(payload.substr(5, 5));
+                    float value = stof(payloadDecoded.substr(0, 5));
+                    float battery = stof(payloadDecoded.substr(5, 5));
                         
                     if (_beacons.count(id) == 0)
                     {                        
@@ -671,7 +691,7 @@ std::string BaseController_RPi::getTimeString_Now(const std::string format)
 
 */
 
-std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength)
+std::string BaseController_RPi::base64Decode(const std::string inputString)
 {
     std::string decodedString;
     
@@ -686,13 +706,13 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
     
     // Handle data in sets of 4.
     
-    unsigned long int currentLength = bufferLength;
+    unsigned long int currentLength = inputString.length();
     
-    char currentChar = inputBuffer[index];
+    char currentChar = inputString.at(index);
 
     while ((currentLength--) && ((isalnum(currentChar)) || (currentChar == '+') || (currentChar == '/')))
     {       
-        temp1[i++] = inputBuffer[index];
+        temp1[i++] = inputString.at(index);
         
         if (i == 4)
         {      
@@ -709,7 +729,7 @@ std::string BaseController_RPi::base64Decode(const unsigned char* inputBuffer, c
             i = 0;
         }
         
-        currentChar = inputBuffer[++index];
+        currentChar = inputString.at(++index);
     }
     
     // Handle an incomplete final set (>4).

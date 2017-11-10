@@ -56,7 +56,7 @@ private:
     static unsigned long int getTimeRaw_Now(void);
     static std::string getTimeString_Now(const std::string format);
     
-    static std::string base64Decode(const unsigned char* inputBuffer, const unsigned long int bufferLength);
+    static std::string base64Decode(const std::string inputString);
     
 public:
     BaseController_RPi(const std::string servername_general, const std::string servername_data, const std::string port_general, const std::string port_data, const unsigned long int delay_sender_loop_in_sec);
