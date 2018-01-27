@@ -3,6 +3,8 @@
 
 #include <netinet/in.h>
 
+// Connection session info struct.
+
 struct SessionInfo
 {	
     const long int SocketHandle;

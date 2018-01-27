@@ -3,6 +3,8 @@
 
 #include <string>
 
+// BLE beacon packet struct.
+
 struct PacketBLE
 {
 public:

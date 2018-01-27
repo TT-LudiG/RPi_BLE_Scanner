@@ -12,6 +12,8 @@
 
 int main(int argc, char* argv[])
 {
+    // Read run-time arguments.
+    
     std::string servername_general = SERVERNAME_GENERAL;
     std::string servername_data = SERVERNAME_DATA;
     std::string port_general = PORT_GENERAL;
@@ -59,6 +61,8 @@ int main(int argc, char* argv[])
         }
     }
     
+    // Initialise the BaseController.
+    
     BaseController_RPi* baseControllerPtr = nullptr;
     
     try
@@ -73,6 +77,8 @@ int main(int argc, char* argv[])
         
         return 1;
     }
+    
+    // Create the listener, sender and monitor threads.
 
     std::thread listenerThread(&BaseController_RPi::listenForBLEDevices, baseControllerPtr);
     
@@ -81,6 +87,8 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::seconds(1));
     
     std::thread monitorThread(&BaseController_RPi::monitorSenderThread, baseControllerPtr);
+    
+    // Run the UI loop.
     
     std::cout << "Enter 'q' (quit), 'e' (exit) or 'c' (close) to end the program..." << std::endl;
     

@@ -13,12 +13,18 @@
 #include "NetworkController_RPi.h"
 #include "NetworkExceptions_RPi.h"
 
+// Default constructor.
+
 NetworkController_RPi::NetworkController_RPi(void): _nextSessionID(0) {}
+
+// Destructor.
 
 NetworkController_RPi::~NetworkController_RPi(void)
 {
     disconnectFromServerAll();
 }
+
+// Method to create a connection session with a server (TCP).
 
 unsigned long int NetworkController_RPi::connectToServer(const std::string servername, const std::string port)
 {
@@ -124,6 +130,8 @@ unsigned long int NetworkController_RPi::connectToServer(const std::string serve
     return _nextSessionID++;
 }
 
+// Method to disconnect a live connection session.
+
 void NetworkController_RPi::disconnectFromServer(const unsigned long int sessionID)
 { 
     if (_sessions.count(sessionID) > 0)
@@ -136,6 +144,8 @@ void NetworkController_RPi::disconnectFromServer(const unsigned long int session
         _sessions.erase(sessionID);
     }
 }
+
+// Method to disconnect all live connection sessions.
 
 void NetworkController_RPi::disconnectFromServerAll(void)
 {
@@ -151,6 +161,8 @@ void NetworkController_RPi::disconnectFromServerAll(void)
         it = _sessions.erase(it);
     }
 }
+
+// Method to attempt to send a byte stream over a connection session.
 
 long int NetworkController_RPi::sendBufferWithSession(const unsigned long int sessionID, const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
@@ -177,6 +189,8 @@ long int NetworkController_RPi::sendBufferWithSession(const unsigned long int se
     
     return bytesCount;
 }
+
+// Method to attempt to read a byte stream from a connection session.
 
 long int NetworkController_RPi::receiveBufferWithSession(const unsigned long int sessionID, unsigned char* outputBuffer, const unsigned long int bufferLength) const
 {

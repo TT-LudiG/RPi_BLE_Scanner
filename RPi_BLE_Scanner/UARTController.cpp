@@ -8,6 +8,8 @@
 #include "UARTController.h"
 #include "UARTExceptions.h"
 
+// Constructor.
+
 UARTController::UARTController(const std::string ttyDevice)
 {  
     _uartFileHandle = open(ttyDevice.c_str(), O_RDWR | O_NOCTTY);
@@ -71,10 +73,14 @@ UARTController::UARTController(const std::string ttyDevice)
     }
 }
 
+// Destructor.
+
 UARTController::~UARTController(void)
 {   
     close(_uartFileHandle);
 }
+
+// Method to send a byte stream to the UART.
     
 long int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength) const
 {
@@ -96,6 +102,8 @@ long int UARTController::sendBuffer(const unsigned char* inputBuffer, const unsi
     
     return bytesCount;
 }
+
+// Method to attempt to read a byte stream from the UART.
 
 long int UARTController::receiveBuffer(unsigned char* outputBuffer, const unsigned long int bufferLength) const
 {

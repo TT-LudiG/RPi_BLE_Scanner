@@ -6,15 +6,21 @@
 #include "BluetoothController.h"
 #include "BluetoothExceptions.h"
 
+// Default constructor.
+
 BluetoothController::BluetoothController(void)
 {
     openHCIDevice_Default();
 }
 
+// Destructor.
+
 BluetoothController::~BluetoothController(void)
 { 
     closeHCIDevice();
 }
+
+// Method to get a HCI device handle for Bluetooth communication.
 
 void BluetoothController::openHCIDevice_Default(void)
 {
@@ -25,10 +31,14 @@ void BluetoothController::openHCIDevice_Default(void)
 	}
 }
 
+// Method to close a HCI device.
+
 void BluetoothController::closeHCIDevice(void) const
 {
     hci_close_dev(_hciDeviceHandle);
 }
+
+// Method to start a BLE scan.
 
 void BluetoothController::startHCIScan_BLE(void)
 {   
@@ -109,6 +119,8 @@ void BluetoothController::startHCIScan_BLE(void)
     }
 }
 
+// Method to stop a BLE scan.
+
 void BluetoothController::stopHCIScan_BLE(void)
 {
     // Disable HCI BLE scan.
@@ -132,6 +144,8 @@ void BluetoothController::stopHCIScan_BLE(void)
     }
 }
 
+// Method to get an HCI BLE request.
+
 struct hci_request BluetoothController::getHCIRequest_BLE(const unsigned short int ocf, const long int clen, void* status, void* cparam)
 {
     struct hci_request hciRequest;
@@ -149,6 +163,8 @@ struct hci_request BluetoothController::getHCIRequest_BLE(const unsigned short i
     
     return hciRequest;
 }
+
+// Method to read HCI data.
 
 long int BluetoothController::readDeviceInput(unsigned char* outputBuffer, const unsigned short int bufferLength) const
 {  

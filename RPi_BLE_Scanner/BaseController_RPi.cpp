@@ -15,6 +15,8 @@
 #include "HTTPRequest_GET.h"
 #include "HTTPRequest_POST.h"
 
+// Constructor.
+
 BaseController_RPi::BaseController_RPi(const std::string servername_general, const std::string servername_data, const std::string port_general, const std::string port_data, const unsigned long int delay_sender_loop_in_sec):
     _servername_general(servername_general),
     _servername_data(servername_data),
@@ -57,6 +59,8 @@ BaseController_RPi::BaseController_RPi(const std::string servername_general, con
     _loopsCount = 0;
 }
 
+// Destructor.
+
 BaseController_RPi::~BaseController_RPi(void)
 {
     std::map<std::string, PacketBLE*>::const_iterator it;
@@ -84,6 +88,8 @@ BaseController_RPi::~BaseController_RPi(void)
     if (_bluetoothControllerPtr != nullptr)
         delete _bluetoothControllerPtr;
 }
+
+// Method to manage the timing of the sender thread by locking its mutex.
 
 void BaseController_RPi::monitorSenderThread(void)
 {
@@ -136,6 +142,8 @@ void BaseController_RPi::monitorSenderThread(void)
     
     _isReady = true;
 }
+
+// Method to send HTTP POSTs of the BLE beacon data (JSON format) to the Web API.
 
 void BaseController_RPi::sendDataPeriodically(void)
 {    
@@ -219,6 +227,8 @@ void BaseController_RPi::sendDataPeriodically(void)
         lock.unlock();
     }
 }
+
+// Method to listen for BLE beacon broadcasts.
 
 void BaseController_RPi::listenForBLEDevices(void)
 {
@@ -321,12 +331,12 @@ void BaseController_RPi::listenForBLEDevices(void)
                     float battery = stof(payloadDecoded.substr(5, 5));
                         
                     if (_beacons.count(id) == 0)
-                    {                        
+                    {
                         _beacons.emplace(id, new PacketBLE(value, battery));
                     }
                         
                     else
-                    {                          
+                    {
                         _beacons.at(id)->Value = value;
                         _beacons.at(id)->Battery = battery;
                     }
@@ -359,6 +369,8 @@ bool BaseController_RPi::getFinalised(void) const
 {
     return _isDone;
 }
+
+// Method to get the reader ID.
 
 unsigned long int BaseController_RPi::getID(void) const
 {
@@ -406,6 +418,8 @@ unsigned long int BaseController_RPi::getID(void) const
     return id;
 }
 
+// Method to send an HTTP GET message via the NetworkController.
+
 HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername, const std::string port, const std::string uri, const unsigned long int responseWaitInMs) const
 {
     HTTPResponse response;
@@ -443,6 +457,8 @@ HTTPResponse BaseController_RPi::sendGETToServerURI(const std::string servername
     
     return response;
 }
+
+// Method to send an HTTP POST message via the NetworkController.
 
 HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servername, const std::string port, const std::string uri, const std::string body, const unsigned long int responseWaitInMs) const
 {
@@ -490,6 +506,8 @@ HTTPResponse BaseController_RPi::sendPOSTToServerURI(const std::string servernam
     return response;
 }
 
+// Method to check if a file exists locally.
+
 bool BaseController_RPi::fileExists(const std::string directoryPath, const std::string fileName)
 {
     bool fileExists = false;
@@ -520,6 +538,8 @@ bool BaseController_RPi::fileExists(const std::string directoryPath, const std::
     return fileExists;
 }
 
+// Method to log an message to file.
+
 void BaseController_RPi::logToFileWithSubdirectory(const std::string message, const std::string subdirectoryName)
 {
     std::stringstream fileLogNameStream;
@@ -541,6 +561,8 @@ void BaseController_RPi::logToFileWithSubdirectory(const std::string message, co
     fileLog.close();
 }
 
+// Method to get a temperature value from a string.
+
 short int BaseController_RPi::getTemperature(const std::string temperatureString)
 {
     short int temperature = (std::stoi(temperatureString.substr(1, 3)) & 0xFFFF);
@@ -550,6 +572,8 @@ short int BaseController_RPi::getTemperature(const std::string temperatureString
     
     return temperature;
 }
+
+// Method to get JSON pairs from a JSON string.
 
 std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(const std::string jsonString)
 {
@@ -614,6 +638,8 @@ std::unordered_map<std::string, std::string> BaseController_RPi::getJSONPairs(co
     return jsonPairs;
 }
 
+// Method to get the local device's MAC address.
+
 std::string BaseController_RPi::getMACAddress(void)
 {
     std::string addressMAC = "";
@@ -632,6 +658,8 @@ std::string BaseController_RPi::getMACAddress(void)
     return addressMAC;
 }
 
+// Method to get current time (raw).
+
 unsigned long int BaseController_RPi::getTimeRaw_Now(void)
 {   
     time_t timeRaw;
@@ -642,6 +670,8 @@ unsigned long int BaseController_RPi::getTimeRaw_Now(void)
     
     return timeRaw;
 }
+
+// Method to get current time (string).
 
 std::string BaseController_RPi::getTimeString_Now(const std::string format)
 {

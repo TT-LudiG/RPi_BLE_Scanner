@@ -8,6 +8,8 @@
 
 #define GSM_CONTROLLER_GET_RESPONSE_ATTEMPT_MAX 20
 
+// Default constructor.
+
 GSMController::GSMController(void)
 {
 	_uartControllerPtr = new UARTController("//dev/serial0");
@@ -31,6 +33,8 @@ GSMController::GSMController(void)
     }
 }
 
+// Destructor.
+
 GSMController::~GSMController(void)
 {
     if (_isConnectedToServer)
@@ -39,6 +43,8 @@ GSMController::~GSMController(void)
     if (_uartControllerPtr != nullptr)
         delete _uartControllerPtr;
 }
+
+// Method to initialise GPRS.
 
 void GSMController::initialiseGPRS(void)
 {
@@ -159,6 +165,8 @@ void GSMController::initialiseGPRS(void)
     }
 }
 
+// Method to connect to a server.
+
 void GSMController::connectToServer(const std::string servername, const unsigned short int port)
 {
     // AT Command: AT+CIPSTART="TCP","serverName","port"
@@ -193,6 +201,8 @@ void GSMController::connectToServer(const std::string servername, const unsigned
     _isConnectedToServer = true;
 }
 
+// Method to disconnect from a server.
+
 void GSMController::disconnectFromServer(void)
 {  
     // AT Command: AT+CIPCLOSE
@@ -211,6 +221,8 @@ void GSMController::disconnectFromServer(void)
         throw e;
     }
 }
+
+// Method to send a byte stream via GSM.
 
 void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
@@ -253,6 +265,8 @@ void GSMController::sendBuffer(const unsigned char* inputBuffer, const unsigned 
     }
 }
 
+// Method to get an AT response from the GSM modem.
+
 std::string GSMController::getATResponse(const unsigned char* inputBuffer, const unsigned long int bufferLength)
 {
     std::stringstream responseStream;
@@ -267,6 +281,8 @@ std::string GSMController::getATResponse(const unsigned char* inputBuffer, const
     
     return responseStream.str();
 }
+
+// Method to check whether an AT response has been received from the GSM modem.
 
 bool GSMController::hasCorrectResponse(const std::string correctResponse)
 {
